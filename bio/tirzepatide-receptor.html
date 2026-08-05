@@ -42,7 +42,11 @@ h1 {
 }
 h1 .ch-glp { color: var(--glp); }
 h1 .ch-gip { color: var(--gip); }
-.lede { color: var(--mute); max-width: 62ch; font-size: 15.5px; margin: 0 0 24px; }
+.lede { color: var(--mute); max-width: 62ch; font-size: 15.5px; margin: 0 0 14px; }
+.disclaimer {
+  color: var(--mute); max-width: 62ch; font-size: 12.5px; line-height: 1.6;
+  margin: 0 0 24px; padding-left: 12px; border-left: 2px solid var(--bio);
+}
 
 .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 22px; flex-wrap: wrap; }
 .tab {
@@ -213,6 +217,7 @@ h1 .ch-gip { color: var(--gip); }
   <div class="eyebrow">Dual-channel receptor atlas · human tissue only</div>
   <h1>One molecule, <span class="ch-glp">two channels</span>, <span class="ch-gip">about a dozen</span> cell types that matter.</h1>
   <p class="lede">Tirzepatide does nothing anywhere without a receptor. This maps every human cell type known to carry GLP-1R or GIPR, what happens when the drug lands there, and what you can actually do about it. Rodent-only findings are flagged, because most of the popular story rests on them.</p>
+  <p class="disclaimer">This page describes mechanism. It is not medical advice, it is not a treatment plan, and reading it creates no clinical relationship. Dosing, safety, and treatment decisions belong with your own clinician, who knows things about you that this page cannot.</p>
 
   <div class="tabs" role="tablist" aria-label="Views">
     <button class="tab" role="tab" data-tab="atlas" aria-selected="true">Where it binds</button>
