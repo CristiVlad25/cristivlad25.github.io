@@ -1,28 +1,226 @@
-<!--
-  PASTE THIS DIRECTLY AFTER THE OPENING <body> TAG OF EACH ARTIFACT.
-  Change the two data values per page: the section label and its href.
-  Works on light or dark artifacts — it inherits nothing and sets its own colors.
--->
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cristi Vlad · Artifacts</title>
+<meta name="description" content="Interactive explainers built directly from primary sources — biology papers, internet RFCs, and machine learning research.">
+<meta property="og:title" content="Cristi Vlad · Artifacts">
+<meta property="og:description" content="Interactive explainers built directly from primary sources.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  .cv-nav{
-    font:11px/1 "IBM Plex Mono",ui-monospace,Menlo,monospace;
-    letter-spacing:.14em;text-transform:uppercase;
-    display:flex;align-items:center;gap:10px;
-    padding:14px 28px;
-    background:#0B0E13;
-    border-bottom:1px solid #1F2630;
-    position:relative;z-index:9999;
+  :root{
+    --ink:#0B0E13;
+    --panel:#10141B;
+    --rule:#1F2630;
+    --rule-lit:#39434F;
+    --text:#E6E9ED;
+    --dim:#7D8794;
+    --bio:#4FD1A5;
+    --cyber:#6D9BFF;
+    --ai:#B98CFF;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+    --sans:"IBM Plex Sans",system-ui,sans-serif;
+    --serif:"Newsreader",Georgia,serif;
   }
-  .cv-nav a{color:#7D8794;text-decoration:none;transition:color .14s ease}
-  .cv-nav a:hover,.cv-nav a:focus-visible{color:#E6E9ED}
-  .cv-nav span{color:#39434F}
-  @media (max-width:620px){ .cv-nav{padding:12px 20px} }
-  @media (prefers-reduced-motion:reduce){ .cv-nav a{transition:none} }
-</style>
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 28px}
 
-<nav class="cv-nav">
-  <a href="/">Cristi Vlad</a>
-  <span>/</span>
-  <a href="/#bio">Bio</a>
-</nav>
+  /* ---------- masthead bar ---------- */
+  .bar{
+    position:sticky;top:0;z-index:10;
+    background:rgba(11,14,19,.82);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--rule);
+  }
+  .bar-in{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:20px;height:52px;
+  }
+  .sig{
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--text);text-decoration:none;
+  }
+  .jump{display:flex;gap:18px;list-style:none;margin:0;padding:0}
+  .jump a{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dim);text-decoration:none;
+    transition:color .14s ease;
+  }
+  .jump a:hover{color:var(--text)}
+  .jump li:nth-child(1) a:hover{color:var(--bio)}
+  .jump li:nth-child(2) a:hover{color:var(--cyber)}
+  .jump li:nth-child(3) a:hover{color:var(--ai)}
+
+  /* ---------- hero ---------- */
+  .hero{padding:108px 0 84px;border-bottom:1px solid var(--rule)}
+  .hero h1{
+    font-family:var(--serif);font-weight:300;
+    font-size:clamp(2.7rem,7.4vw,5rem);
+    line-height:1.02;letter-spacing:-.02em;
+    margin:0 0 26px;max-width:16ch;
+  }
+  .hero h1 em{font-style:italic;color:var(--dim)}
+  .hero p{
+    max-width:56ch;margin:0;color:var(--dim);font-size:1.02rem;
+  }
+  .hero p strong{color:var(--text);font-weight:400}
+
+  /* ---------- section headers ---------- */
+  .sec{padding:64px 0 8px}
+  .sec-head{
+    display:flex;align-items:baseline;gap:16px;
+    padding-bottom:14px;border-bottom:1px solid var(--rule);
+  }
+  .sec-name{
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;
+  }
+  .sec-desc{font-family:var(--sans);font-size:.86rem;color:var(--dim);flex:1}
+  .sec-count{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em}
+  #bio .sec-name{color:var(--bio)}
+  #cyber .sec-name{color:var(--cyber)}
+  #ai .sec-name{color:var(--ai)}
+
+  /* ---------- entry rows (the repeatable unit) ---------- */
+  .entry{
+    display:grid;
+    grid-template-columns:150px 1fr;
+    gap:0 28px;
+    padding:24px 16px 24px 0;
+    margin:0 -16px 0 0;
+    border-bottom:1px solid var(--rule);
+    text-decoration:none;color:inherit;
+    transition:background .14s ease,padding .14s ease;
+  }
+  .entry:hover,.entry:focus-visible{
+    background:var(--panel);
+    padding-left:16px;margin-left:-16px;
+    outline:none;
+  }
+  .entry:focus-visible{box-shadow:inset 2px 0 0 var(--rule-lit)}
+  .src{
+    font-family:var(--mono);font-size:11px;line-height:1.7;
+    color:var(--dim);letter-spacing:.04em;
+    transition:color .14s ease;
+    padding-top:5px;
+  }
+  #bio .entry:hover .src{color:var(--bio)}
+  #cyber .entry:hover .src{color:var(--cyber)}
+  #ai .entry:hover .src{color:var(--ai)}
+  .entry h2{
+    font-family:var(--serif);font-weight:400;
+    font-size:1.42rem;line-height:1.25;letter-spacing:-.01em;
+    margin:0 0 7px;
+  }
+  .entry p{margin:0;color:var(--dim);font-size:.93rem;max-width:60ch}
+
+  .empty{
+    grid-column:1/-1;
+    font-family:var(--mono);font-size:11.5px;color:var(--dim);
+    letter-spacing:.06em;padding:26px 0;border-bottom:1px solid var(--rule);
+  }
+
+  /* ---------- footer ---------- */
+  footer{
+    margin-top:88px;padding:32px 0 60px;border-top:1px solid var(--rule);
+    font-family:var(--mono);font-size:11px;color:var(--dim);
+    letter-spacing:.06em;display:flex;flex-wrap:wrap;gap:8px 26px;
+  }
+  footer a{color:var(--dim);text-decoration:none;border-bottom:1px solid var(--rule)}
+  footer a:hover{color:var(--text)}
+
+  @media (max-width:620px){
+    .wrap{padding:0 20px}
+    .hero{padding:72px 0 56px}
+    .jump{gap:14px}
+    .entry{grid-template-columns:1fr;gap:10px}
+    .src{padding-top:0}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="wrap bar-in">
+    <a class="sig" href="/">Cristi Vlad</a>
+    <ul class="jump">
+      <li><a href="#bio">Bio</a></li>
+      <li><a href="#cyber">Cyber</a></li>
+      <li><a href="#ai">AI</a></li>
+    </ul>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header class="hero">
+    <h1>Papers, <em>rebuilt</em> as things you can touch.</h1>
+    <p>Each page here is one primary source — a biology paper, an internet standard, a machine learning result — turned into something interactive enough to actually interrogate. <strong>Evidence tiers are marked. Rodent-only findings are flagged. Nothing is smoothed over.</strong></p>
+  </header>
+
+  <!-- ================= BIO ================= -->
+  <section class="sec" id="bio">
+    <div class="sec-head">
+      <span class="sec-name">Bio</span>
+      <span class="sec-desc">Pharmacology, physiology, and the gap between mouse and human.</span>
+      <span class="sec-count">1</span>
+    </div>
+
+    <!-- ▼ COPY THIS BLOCK TO ADD AN ENTRY ▼ -->
+    <a class="entry" href="/bio/tirzepatide-receptor.html">
+      <div class="src">Pyke 2014<br>Willard 2020</div>
+      <div>
+        <h2>Tirzepatide · Dual-Channel Receptor Atlas</h2>
+        <p>Every human cell type known to carry GLP-1R or GIPR, what the drug does when it lands there, and which parts of the popular story rest on rodents.</p>
+      </div>
+    </a>
+    <!-- ▲ COPY THIS BLOCK TO ADD AN ENTRY ▲ -->
+
+  </section>
+
+  <!-- ================= CYBER ================= -->
+  <section class="sec" id="cyber">
+    <div class="sec-head">
+      <span class="sec-name">Cyber</span>
+      <span class="sec-desc">Internet standards read closely — what the RFC actually mandates.</span>
+      <span class="sec-count">0</span>
+    </div>
+    <div class="empty">First RFC in progress.</div>
+  </section>
+
+  <!-- ================= AI ================= -->
+  <section class="sec" id="ai">
+    <div class="sec-head">
+      <span class="sec-name">AI</span>
+      <span class="sec-desc">Architectures and results, traced back to the paper that introduced them.</span>
+      <span class="sec-count">0</span>
+    </div>
+    <div class="empty">Starting with attention.</div>
+  </section>
+
+  <footer>
+    <span>Text and figures © Cristi Vlad</span>
+    <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>
+    <a href="https://github.com/cristivlad25/cristivlad25.github.io">Source</a>
+  </footer>
+
+</div>
+</body>
+</html>
