@@ -49,7 +49,8 @@ broad security syntheses, `ai` holds paper readings *and* infrastructure synthes
    the subject rather than a title - `tirzepatide-receptor.html`, not
    `pyke-2014-glp1r-immunohistochemistry.html`. Short and guessable.
 2. **Insert the nav bar** as the first thing after `<body>`, with the section label
-   and href matching the folder the file lives in.
+   and href matching the folder the file lives in. The page background must be
+   `--ink` exactly, or the nav bar sits on a different colour and shows a seam.
 3. **Add the entry** to `index.html` inside the matching `<section>`.
 4. **Bump `.sec-count`**, and delete the section's `.empty` div if this is its first
    entry.
@@ -88,6 +89,8 @@ different jobs, and both are strict.
   including for parenthetical breaks and numeric ranges. If a draft contains one,
   replace it before committing. This applies to text written by a model as much as
   text written by hand, and it is the single most frequently violated rule here.
+  Grep for the escaped forms too - `—` and `–` inside a JS string render
+  as dashes and are invisible to a search for the character itself.
 - **The middle dot `·` separates a title from its subtitle**, and is the one piece of
   non-ASCII punctuation the site uses: `Tirzepatide · Dual-Channel Receptor Atlas`.
   Not a hyphen, not a colon. It also separates items in a mono anchor or scope line:
@@ -97,8 +100,6 @@ So: `LLM Infrastructure Explorer · from a web crawl to a word on your screen`, 
 inside the prose, "the router picks a region - geography, capacity, residency - then
 hands off".
 
-- **The `<h2>` in the index entry matches the page's own `<title>`.** A visitor who
-  clicks one name should not land on a page with a different one.
 - Sentence case for headings.
 
 ## Design tokens
@@ -109,9 +110,10 @@ hands off".
 --bio:#4FD1A5   --cyber:#6D9BFF   --ai:#B98CFF
 ```
 
-Type: **Newsreader** (300/400 - display on the hub), **IBM Plex Sans** (body),
-**IBM Plex Sans Condensed** (600/700 - display inside artifacts), **IBM Plex Mono**
-(labels, data, anchors, anything letterspaced in caps).
+Type: **Newsreader** (300/400) is the hub display face and appears nowhere else. An
+artifact's own `h1` uses **IBM Plex Sans Condensed** (600/700). Body copy is **IBM
+Plex Sans**; **IBM Plex Mono** carries labels, data, anchors, and anything
+letterspaced in caps. No other families.
 
 Section accent is determined by folder; a bio page never borrows another section's
 color. Inside an artifact, a working palette for data encoding is fine where the
@@ -218,14 +220,13 @@ citation nor a scope - if the page is a synthesis, describe what it covers inste
 `<h2>` matches the page's `<title>`. `<p>` is one concrete sentence about what's
 interrogable, not a summary of the subject.
 
-## Never do
+## Before committing
 
-- Commit `.jsx`, `.tsx`, or any file requiring compilation.
-- Ship a page whose text only exists after JavaScript runs.
-- Add a package.json, build config, or GitHub Actions workflow. Static files only.
-- Delete `.nojekyll`.
-- Use relative paths for internal links.
-- Add an artifact without registering it in `index.html`.
-- Offer a license the repository doesn't grant.
-- Use an em dash or en dash. Plain hyphen, always.
-- Reproduce figures or extended text from source material.
+Static files only - no package.json, build config, workflow, or anything needing
+compilation. Then check; each of these has shipped broken at least once:
+
+- Grep the diff for `—`, `–`, `—`, `–`. Any hit is a bug.
+- Load the page with JavaScript off. Headline, framing, and sources must be there.
+- Head block complete: `<title>`, description, `og:title`, `og:description`, `og:type`.
+- The index `<h2>` is character-for-character the page's `<title>`, and the entry
+  exists at all. Page background is `--ink`.
