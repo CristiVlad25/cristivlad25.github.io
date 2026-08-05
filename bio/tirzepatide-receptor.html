@@ -243,7 +243,7 @@ h1 .ch-gip { color: var(--gip); }
         <div class="maplegend">
           <div><span class="swatch" style="background:#F0509B;box-shadow:0 0 8px #F0509B"></span>GLP-1R</div>
           <div><span class="swatch" style="background:#2BD6D6;box-shadow:0 0 8px #2BD6D6"></span>GIPR</div>
-          <div><span class="swatch" style="background:#EEF3FF;box-shadow:0 0 8px #fff"></span>both — the channels overlap and read white</div>
+          <div><span class="swatch" style="background:#EEF3FF;box-shadow:0 0 8px #fff"></span>both - the channels overlap and read white</div>
           <div style="margin-top:6px;opacity:.75">Dot size = receptor density (0–3)</div>
         </div>
         <ul class="sitelist" id="sitelist"></ul>
@@ -253,7 +253,7 @@ h1 .ch-gip { color: var(--gip); }
   </section>
 
   <section id="panel-none" hidden>
-    <p class="sectionlead">Half of understanding this drug is knowing which effects arrive without a receptor. Everything below is a real effect with no direct target — which changes what you can do about it.</p>
+    <p class="sectionlead">Half of understanding this drug is knowing which effects arrive without a receptor. Everything below is a real effect with no direct target - which changes what you can do about it.</p>
     <div id="nonTargets"></div>
   </section>
 
@@ -263,7 +263,7 @@ h1 .ch-gip { color: var(--gip); }
     <div class="card pnote">
       <h3>Signalling profile, relative to each native hormone</h3>
       <div class="bars" id="bars"></div>
-      <p>At GIPR it behaves like the real hormone. At GLP-1R it drives cAMP while barely recruiting β-arrestin — so the receptor internalises less and stays available on the cell surface. In primary islets, β-arrestin1 limits the insulin response to GLP-1 but not to tirzepatide.</p>
+      <p>At GIPR it behaves like the real hormone. At GLP-1R it drives cAMP while barely recruiting β-arrestin - so the receptor internalises less and stays available on the cell surface. In primary islets, β-arrestin1 limits the insulin response to GLP-1 but not to tirzepatide.</p>
     </div>
 
     <div class="card pnote">
@@ -274,20 +274,20 @@ h1 .ch-gip { color: var(--gip); }
 
     <div class="card pnote">
       <h3>The rodent trap</h3>
-      <p>Tirzepatide is <span class="mono">far less potent at mouse GIPR than at human GIPR</span>. Any mouse study of this drug systematically underweights the GIP arm — the half that most distinguishes it from a GLP-1-only agonist.</p>
+      <p>Tirzepatide is <span class="mono">far less potent at mouse GIPR than at human GIPR</span>. Any mouse study of this drug systematically underweights the GIP arm - the half that most distinguishes it from a GLP-1-only agonist.</p>
       <p><strong>How to use this:</strong> when you meet a mechanistic claim about tirzepatide, check the species first. Mouse work here is a weak proxy in a specific, predictable direction.</p>
     </div>
 
     <div class="card pnote">
       <h3>What adapts, and what doesn't</h3>
-      <p>Delayed gastric emptying shows clear tachyphylaxis — pronounced after the first dose, substantially attenuated after about four weekly doses. Appetite suppression, glucose lowering and weight loss do not fade the same way.</p>
-      <p><strong>Consequence:</strong> nausea and reflux are worst early and after each escalation, and genuinely improve. Constipation, driven by enteric neurons along the whole gut, is more persistent — manage it as an ongoing condition rather than waiting it out.</p>
+      <p>Delayed gastric emptying shows clear tachyphylaxis - pronounced after the first dose, substantially attenuated after about four weekly doses. Appetite suppression, glucose lowering and weight loss do not fade the same way.</p>
+      <p><strong>Consequence:</strong> nausea and reflux are worst early and after each escalation, and genuinely improve. Constipation, driven by enteric neurons along the whole gut, is more persistent - manage it as an ongoing condition rather than waiting it out.</p>
     </div>
   </section>
 
   <div class="foot">
-    <div>Evidence tiers — <span style="color:#7ED09A">human protein / human function</span>: validated antibody, radioligand binding, or measured response in people · <span style="color:#8FB4E8">human transcript</span>: single-cell or single-nucleus RNA sequencing of human tissue · <span style="color:#F0A93B">rodent only</span>: not confirmed in human tissue.</div>
-    <div style="margin-top:8px">Built from validated-antibody mapping of human and monkey tissue (Pyke 2014), human islet receptor reviews, human white adipose single-nucleus atlases, primary human osteoclast and osteoblast work, and tirzepatide receptor pharmacology (Willard 2020). This is a map of the biology, not medical advice — dosing and safety decisions belong with your clinician.</div>
+    <div>Evidence tiers - <span style="color:#7ED09A">human protein / human function</span>: validated antibody, radioligand binding, or measured response in people · <span style="color:#8FB4E8">human transcript</span>: single-cell or single-nucleus RNA sequencing of human tissue · <span style="color:#F0A93B">rodent only</span>: not confirmed in human tissue.</div>
+    <div style="margin-top:8px">Built from validated-antibody mapping of human and monkey tissue (Pyke 2014), human islet receptor reviews, human white adipose single-nucleus atlases, primary human osteoclast and osteoblast work, and tirzepatide receptor pharmacology (Willard 2020). This is a map of the biology, not medical advice - dosing and safety decisions belong with your clinician.</div>
   </div>
 </div>
 
@@ -303,14 +303,14 @@ const EV = {
 const SITES = [
   { id:"hindbrain", label:"Area postrema & NTS", region:"Hindbrain · dorsal vagal complex", x:100, y:48, glp:3, gip:3,
     headline:"The single most consequential site. Appetite and nausea are decided here.",
-    why:"Tirzepatide is a 4.8 kDa fatty-acylated peptide riding on albumin — far too big to cross an intact blood–brain barrier. Fluorescent tracer studies show it reaches the brain almost exclusively at circumventricular organs, where the barrier is deliberately leaky. This is the doorway.",
+    why:"Tirzepatide is a 4.8 kDa fatty-acylated peptide riding on albumin - far too big to cross an intact blood–brain barrier. Fluorescent tracer studies show it reaches the brain almost exclusively at circumventricular organs, where the barrier is deliberately leaky. This is the doorway.",
     cells:[
       { cell:"Glutamatergic area postrema neurons", glp:3, gip:0, ev:"R", mode:"direct",
         effect:"Fire the aversion circuit: AP → NTS → parabrachial → amygdala. Suppresses eating and produces nausea through the same wire.",
-        action:"Nausea peaks in the 2–5 days after each dose increase, not randomly. If a step is rough, hold that dose another 4 weeks rather than pushing through — the receptor doesn't need a higher dose to keep working." },
+        action:"Nausea peaks in the 2–5 days after each dose increase, not randomly. If a step is rough, hold that dose another 4 weeks rather than pushing through - the receptor doesn't need a higher dose to keep working." },
       { cell:"GABAergic area postrema neurons", glp:0, gip:3, ev:"R", mode:"direct",
         effect:"Inhibit the neighbouring glutamatergic neurons. GIPR agonism blocks vomiting in ferrets and shrews, including chemotherapy-induced vomiting.",
-        action:"This is why tirzepatide causes less vomiting than an equipotent semaglutide dose — a built-in brake, not a weaker drug. It is not permission to escalate faster; the brake is partial." },
+        action:"This is why tirzepatide causes less vomiting than an equipotent semaglutide dose - a built-in brake, not a weaker drug. It is not permission to escalate faster; the brake is partial." },
       { cell:"NTS relay neurons", glp:2, gip:2, ev:"R", mode:"direct",
         effect:"Integrate the blood-borne drug signal with vagal traffic arriving from the gut, then project onward to hypothalamus and amygdala.",
         action:"Meal timing matters more than you'd expect: gut signal and drug signal sum here. Eating slowly lets the vagal half land before you're already full." }
@@ -321,7 +321,7 @@ const SITES = [
     cells:[
       { cell:"Arcuate GLP-1R neurons", glp:2, gip:0, ev:"R", mode:"direct",
         effect:"Shift the long-run set point for energy intake.",
-        action:"Expect appetite to feel structurally different — smaller portions feel finished — rather than feeling suppressed by willpower. Plan meals around protein first; the volume you'll accept drops before the nutrients you need do." },
+        action:"Expect appetite to feel structurally different - smaller portions feel finished - rather than feeling suppressed by willpower. Plan meals around protein first; the volume you'll accept drops before the nutrients you need do." },
       { cell:"Hypothalamic GIPR neurons", glp:0, gip:2, ev:"R", mode:"direct",
         effect:"Reduce food intake through connectivity and transcriptional profile distinct from AP and NTS GIPR neurons.",
         action:"Human evidence here is thin. Treat any claim that tirzepatide 'rewires the hypothalamus' as extrapolation from mice." }
@@ -340,29 +340,29 @@ const SITES = [
     cells:[
       { cell:"Sinoatrial node myocytes", glp:3, gip:0, ev:"HP", mode:"direct",
         effect:"Raise resting heart rate. Ambulatory monitoring in SURMOUNT-1 showed a dose-dependent rise of roughly 2–5 bpm over 24 hours.",
-        action:"A few extra beats per minute is expected physiology, not a warning sign — take a baseline resting pulse before you start so you can tell signal from noise. Get evaluated for a persistent resting rate above 100, new palpitations, or exertional breathlessness." },
+        action:"A few extra beats per minute is expected physiology, not a warning sign - take a baseline resting pulse before you start so you can tell signal from noise. Get evaluated for a persistent resting rate above 100, new palpitations, or exertional breathlessness." },
       { cell:"Ventricular cardiomyocytes", glp:0, gip:0, ev:"HP", mode:"none",
         effect:"No receptor. Any effect on cardiac remodelling or heart failure is downstream of weight, blood pressure and inflammation.",
         action:"When you read that tirzepatide 'acts on the heart', check whether the claim needs a receptor. Here, it doesn't have one." }
     ]},
   { id:"vessels", label:"Arterial & arteriolar smooth muscle", region:"Kidney, lung, systemic vasculature", x:131, y:180, glp:2, gip:1,
-    headline:"In kidney and lung, GLP-1R is exclusively vascular — not tubular, not alveolar.",
+    headline:"In kidney and lung, GLP-1R is exclusively vascular - not tubular, not alveolar.",
     why:"The same validated-antibody survey found receptor only in the smooth muscle of arteries and arterioles. Renal tubule cells are negative, which reshapes how the kidney benefit should be explained.",
     cells:[
       { cell:"Vascular smooth muscle cells", glp:2, gip:0, ev:"HP", mode:"direct",
         effect:"Vasodilation contributing to lower systolic blood pressure and altered intrarenal haemodynamics.",
-        action:"Recheck home blood pressure a few weeks in. If you take antihypertensives, this is a common reason doses need trimming — lightheadedness on standing is the usual first clue." },
+        action:"Recheck home blood pressure a few weeks in. If you take antihypertensives, this is a common reason doses need trimming - lightheadedness on standing is the usual first clue." },
       { cell:"Renal tubular epithelium", glp:0, gip:0, ev:"HP", mode:"none",
         effect:"No receptor. Natriuresis and albuminuria improvement arrive through blood flow, pressure and glycaemia.",
         action:"Kidney protection is real and indirect. Don't expect a direct tubular drug effect." }
     ]},
   { id:"islet", label:"Pancreatic islet", region:"Pancreas", x:97, y:176, glp:3, gip:3,
     headline:"The only place both receptors are strongly expressed on the same cell.",
-    why:"GLP-1R is close to a beta-cell-specific marker inside the human islet. GIPR is broader — beta cells, alpha cells, possibly delta cells. Tirzepatide's biased signalling at GLP-1R keeps more receptor on the membrane instead of internalising it.",
+    why:"GLP-1R is close to a beta-cell-specific marker inside the human islet. GIPR is broader - beta cells, alpha cells, possibly delta cells. Tirzepatide's biased signalling at GLP-1R keeps more receptor on the membrane instead of internalising it.",
     cells:[
       { cell:"Beta cells", glp:3, gip:3, ev:"HP", mode:"direct",
         effect:"Both receptors raise cAMP and amplify insulin release, but only when glucose is already elevated.",
-        action:"Glucose dependence is why tirzepatide alone rarely causes hypoglycaemia. Combined with a sulfonylurea or insulin it absolutely can — those doses usually need reducing at initiation, not after the first low." },
+        action:"Glucose dependence is why tirzepatide alone rarely causes hypoglycaemia. Combined with a sulfonylurea or insulin it absolutely can - those doses usually need reducing at initiation, not after the first low." },
       { cell:"Alpha cells", glp:0, gip:2, ev:"HT", mode:"direct",
         effect:"GIPR stimulates glucagon when glucose is low, while GLP-1R signalling suppresses it when glucose is high.",
         action:"Read this as a safety feature: the GIP arm leaves your counter-regulation intact. Glucose-adjusted glucagon still falls 28–36% across therapeutic doses." },
@@ -371,25 +371,25 @@ const SITES = [
         action:"Treat any confident claim about delta-cell incretin signalling as ahead of the data." },
       { cell:"Acinar cells", glp:1, gip:0, ev:"HP", mode:"direct",
         effect:"Weak GLP-1R expression, well below beta cells.",
-        action:"Worth knowing when weighing pancreatitis reports — but see the ducts." },
+        action:"Worth knowing when weighing pancreatitis reports - but see the ducts." },
       { cell:"Ductal epithelium", glp:0, gip:0, ev:"HP", mode:"none",
         effect:"Consistently negative for GLP-1R across antibody and autoradiography studies.",
         action:"The pancreatitis concern is a clinical-surveillance question, not a receptor-on-the-duct story. Sudden severe upper-abdominal pain radiating to the back still needs urgent assessment." }
     ]},
   { id:"stomach", label:"Stomach wall", region:"Gastric mucosa & muscularis", x:83, y:157, glp:2, gip:1,
-    headline:"Where delayed emptying comes from — and where the effect partly wears off.",
+    headline:"Where delayed emptying comes from - and where the effect partly wears off.",
     why:"GLP-1R is present in parietal cells and in smooth muscle of the muscularis externa, at lower density than the duodenum.",
     cells:[
       { cell:"Gastric smooth muscle", glp:2, gip:0, ev:"HP", mode:"direct",
         effect:"Slows emptying markedly after the first doses. Tachyphylaxis develops after roughly four weekly doses; weight and glucose effects persist regardless.",
-        action:"Highest risk of retained stomach contents is early and in the days after each escalation. Tell any anaesthetist or endoscopist that you take this drug and when your last dose was — do not just stop it unilaterally before a procedure." },
+        action:"Highest risk of retained stomach contents is early and in the days after each escalation. Tell any anaesthetist or endoscopist that you take this drug and when your last dose was - do not just stop it unilaterally before a procedure." },
       { cell:"Parietal cells", glp:2, gip:0, ev:"HP", mode:"direct",
         effect:"Modulates acid secretion.",
         action:"Reflux is common early. Smaller volumes, less fat per meal, and staying upright for an hour after eating do more than anything else you can buy." }
     ]},
   { id:"duodenum", label:"Brunner's glands", region:"Duodenum", x:113, y:168, glp:3, gip:1,
     headline:"The densest GLP-1R signal anywhere in the human gastrointestinal tract.",
-    why:"Higher than stomach, higher than intestine. Brunner's glands secrete alkaline mucus that protects the duodenum from gastric acid — an under-discussed target given how high the expression runs.",
+    why:"Higher than stomach, higher than intestine. Brunner's glands secrete alkaline mucus that protects the duodenum from gastric acid - an under-discussed target given how high the expression runs.",
     cells:[
       { cell:"Brunner's gland cells", glp:3, gip:0, ev:"HP", mode:"direct",
         effect:"Function of this receptor in humans is not well characterised despite the striking density.",
@@ -404,18 +404,18 @@ const SITES = [
         action:"Constipation does not reliably fade the way nausea does. Set up fluid, fibre and movement from week one rather than reacting in week six; osmotic laxatives are the usual next step." }
     ]},
   { id:"adipose", label:"White adipose tissue", region:"Subcutaneous & visceral fat", x:78, y:206, glp:0, gip:2,
-    headline:"The receptor is on the fat tissue's support cells — not on the fat cells.",
+    headline:"The receptor is on the fat tissue's support cells - not on the fat cells.",
     why:"Single-nucleus sequencing of human white adipose tissue localises GIPR to pericytes and mesothelial cells, with endothelium and macrophages also implicated. Attempts to knock Gipr out of adipocytes specifically failed to reduce tissue expression at all.",
     cells:[
       { cell:"Pericytes & mesothelial cells", glp:0, gip:2, ev:"HT", mode:"direct",
-        effect:"Raise adipose blood flow and triglyceride clearance — but only once insulin passes a threshold concentration.",
+        effect:"Raise adipose blood flow and triglyceride clearance - but only once insulin passes a threshold concentration.",
         action:"This dependency explains the timeline. In people with obesity the blood-flow response is blunted, and weight loss partly restores it, so the GIP arm gets stronger as you go. Judge the fat-loss advantage at 6–12 months, not at 6 weeks." },
       { cell:"Adipocytes", glp:0, gip:0, ev:"HT", mode:"none",
         effect:"Not the major GIPR-expressing cell type in human white adipose tissue.",
         action:"Retire the mental image of tirzepatide docking onto a fat cell. It's acting on the tissue's plumbing and lining." },
       { cell:"Adipose tissue macrophages", glp:0, gip:1, ev:"R", mode:"direct",
         effect:"Reduced pro-inflammatory M1 infiltration, tracking with improved insulin sensitivity.",
-        action:"Part of why insulin sensitivity improves more than weight loss alone predicts — weight explained only 13–21% of the HOMA2-IR improvement at higher doses." }
+        action:"Part of why insulin sensitivity improves more than weight loss alone predicts - weight explained only 13–21% of the HOMA2-IR improvement at higher doses." }
     ]},
   { id:"bone", label:"Bone remodelling surface", region:"Osteoclasts & osteoblasts", x:139, y:300, glp:0, gip:3,
     headline:"GIPR is robustly expressed on mature human osteoclasts. This one is real and often missed.",
@@ -423,7 +423,7 @@ const SITES = [
     cells:[
       { cell:"Mature osteoclasts", glp:0, gip:3, ev:"HP", mode:"direct",
         effect:"GIP inhibits osteoclast formation, delays resorption and increases osteoclast apoptosis. Infusion drops the resorption marker CTX to roughly 50–60% of baseline.",
-        action:"The GIP arm is probably protective at the bone surface — but the calorie deficit driving weight loss is not. Load the skeleton: resistance training twice weekly, protein at roughly 1.2–1.6 g/kg, and adequate calcium and vitamin D. Ask about a DXA scan if you're postmenopausal, over 65, or planning years of treatment." },
+        action:"The GIP arm is probably protective at the bone surface - but the calorie deficit driving weight loss is not. Load the skeleton: resistance training twice weekly, protein at roughly 1.2–1.6 g/kg, and adequate calcium and vitamin D. Ask about a DXA scan if you're postmenopausal, over 65, or planning years of treatment." },
       { cell:"Osteoblasts", glp:0, gip:2, ev:"HP", mode:"direct",
         effect:"Improved survival, without a clear increase in bone formation.",
         action:"Preserving what you have is the realistic goal here, not building new bone." }
@@ -434,20 +434,20 @@ const SITES = [
     cells:[
       { cell:"Adrenocortical cells", glp:0, gip:1, ev:"HP", mode:"direct",
         effect:"Minimal in normal physiology; dramatic in the rare ectopic-receptor syndrome.",
-        action:"A curiosity for almost everyone. Worth knowing if you have unexplained Cushingoid features — the meal-linked pattern is the tell." }
+        action:"A curiosity for almost everyone. Worth knowing if you have unexplained Cushingoid features - the meal-linked pattern is the tell." }
     ]}
 ];
 
 const NON_TARGETS = [
   { tissue:"Hepatocytes & hepatic stellate cells", verdict:"No functional receptor",
     detail:"Neither GLP-1R nor GIPR agonism has direct action in human hepatocytes or stellate cells. Improvement in liver fat and MASH is downstream of weight loss, insulin sensitivity and reduced fatty acid flux.",
-    action:"Real benefit, indirect route. It also means liver improvement tracks with the metabolic changes — if weight and glycaemia stall, don't expect the liver to keep improving on its own." },
+    action:"Real benefit, indirect route. It also means liver improvement tracks with the metabolic changes - if weight and glycaemia stall, don't expect the liver to keep improving on its own." },
   { tissue:"Skeletal muscle fibres", verdict:"No meaningful GLP-1R",
     detail:"Lean mass loss on incretin therapy is what an energy deficit does to muscle, not a receptor-mediated catabolic effect.",
     action:"This is the most actionable non-finding on the page. Resistance training and protein intake protect lean mass here exactly as they would in any other deficit. Nothing about the drug blocks that." },
-  { tissue:"Thyroid C cells (human)", verdict:"Contested — very low or absent",
+  { tissue:"Thyroid C cells (human)", verdict:"Contested - very low or absent",
     detail:"Rodent C cells express GLP-1R and proliferate. Human and monkey C cells show low expression and no adenylate cyclase or calcitonin response. One immunofluorescence study found receptor in about a third of C cells in 5 of 15 normal thyroids; a separate antibody-plus-autoradiography study found none at all.",
-    action:"The MEN2 and medullary thyroid carcinoma contraindication is precautionary and still stands — declare a family history. But a rodent tumour signal that fails to reproduce in primates is weak ground for personal alarm." },
+    action:"The MEN2 and medullary thyroid carcinoma contraindication is precautionary and still stands - declare a family history. But a rodent tumour signal that fails to reproduce in primates is weak ground for personal alarm." },
   { tissue:"White adipocytes", verdict:"Receptor is on the neighbours",
     detail:"Human GIPR in white adipose tissue localises to pericytes and mesothelial cells.",
     action:"Judge adipose effects as tissue-level remodelling, not fat-cell-level signalling." },
@@ -463,7 +463,7 @@ const PHARM = [
   { receptor:"GIPR", pathway:"cAMP", value:100, note:"Full agonist, essentially equipotent with native GIP" },
   { receptor:"GIPR", pathway:"β-arrestin", value:95, note:"Full agonism, close to equipotent with native GIP" },
   { receptor:"GLP-1R", pathway:"cAMP", value:51, note:"Potent partial agonist by GTPγS binding" },
-  { receptor:"GLP-1R", pathway:"β-arrestin", value:8, note:"Under 10% of maximum — the defining bias" }
+  { receptor:"GLP-1R", pathway:"β-arrestin", value:8, note:"Under 10% of maximum - the defining bias" }
 ];
 
 /* ---------- state ---------- */
