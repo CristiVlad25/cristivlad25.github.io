@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tirzepatide · Dual-Channel Receptor Atlas</title>
+<meta name="description" content="An interactive map of every human cell type known to carry GLP-1R or GIPR, what tirzepatide does there, and what to do about it." />
+<meta property="og:title" content="Tirzepatide · Dual-Channel Receptor Atlas" />
+<meta property="og:description" content="Where tirzepatide binds in human tissue, where it doesn't, and why that changes what you can act on." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+:root {
+  --glp:#F0509B; --gip:#2BD6D6; --merge:#EEF3FF;
+  --field:#0A0D14; --panel:#111725; --panel2:#0E1421;
+  --line:#222B3D; --text:#DCE3F0; --mute:#7E8CA6; --warn:#F0A93B;
+}
+html, body { margin: 0; padding: 0; background: var(--field); }
+body {
+  color: var(--text);
+  font-family: 'Source Serif 4', Georgia, serif;
+  padding: 28px 20px 64px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1140px; margin: 0 auto; }
+
+.eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--mute); margin-bottom: 14px;
+}
+h1 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700; font-size: clamp(26px, 4.6vw, 46px);
+  line-height: 1.05; letter-spacing: -.025em; margin: 0 0 14px;
+  max-width: 20ch;
+}
+h1 .ch-glp { color: var(--glp); }
+h1 .ch-gip { color: var(--gip); }
+.lede { color: var(--mute); max-width: 62ch; font-size: 15.5px; margin: 0 0 24px; }
+
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 22px; flex-wrap: wrap; }
+.tab {
+  font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500;
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--mute); padding: 10px 14px; cursor: pointer; letter-spacing: -.01em;
+}
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--merge); }
+.tab:focus-visible { outline: 2px solid var(--gip); outline-offset: -2px; }
+
+.controls {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  padding: 12px; background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 3px; margin-bottom: 18px;
+}
+.cube {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .04em;
+  background: transparent; border: 1px solid var(--line); color: var(--mute);
+  padding: 7px 12px; border-radius: 2px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.cube:focus-visible { outline: 2px solid var(--merge); outline-offset: 2px; }
+.cube .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; opacity: .35; }
+.cube.on { color: var(--text); border-color: currentColor; }
+.cube.glp.on { border-color: var(--glp); box-shadow: inset 0 0 0 1px rgba(240,80,155,.25); }
+.cube.glp.on .dot { background: var(--glp); opacity: 1; box-shadow: 0 0 10px var(--glp); }
+.cube.gip.on { border-color: var(--gip); box-shadow: inset 0 0 0 1px rgba(43,214,214,.25); }
+.cube.gip.on .dot { background: var(--gip); opacity: 1; box-shadow: 0 0 10px var(--gip); }
+.cube.filt.on { border-color: var(--merge); color: var(--merge); }
+.cube.filt.on .dot { background: var(--merge); opacity: 1; }
+.ctl-note { font-family:'IBM Plex Mono',monospace; font-size: 10.5px; color: var(--mute); margin-left: auto; }
+
+.grid { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+@media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; }
+.mapcard { padding: 14px 12px 16px; position: sticky; top: 16px; }
+@media (max-width: 880px) { .mapcard { position: static; } }
+
+.body-svg { width: 100%; height: auto; display: block; max-height: 430px; }
+.figure { fill: none; stroke: #263047; stroke-width: 1; stroke-linecap: round; }
+.marker { cursor: pointer; }
+.marker .hit { fill: transparent; }
+.marker .blend { mix-blend-mode: screen; }
+.marker circle[fill] { filter: blur(.4px); transition: r .25s ease, opacity .25s ease; }
+.marker:hover .blend circle { opacity: .9; }
+.marker .ring { fill: none; stroke: var(--merge); stroke-width: 1; opacity: .8; }
+.marker:focus { outline: none; }
+.marker:focus-visible .hit { stroke: var(--merge); stroke-width: 1.5; stroke-dasharray: 2 2; }
+@media (prefers-reduced-motion: reduce) { .marker circle[fill] { transition: none; } }
+
+.maplegend {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--mute);
+  border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; line-height: 1.7;
+}
+.swatch { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+
+.sitelist { list-style: none; margin: 12px 0 0; padding: 0; }
+.sitebtn {
+  width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line);
+  padding: 8px 2px; cursor: pointer; color: var(--mute);
+  font-family: 'Space Grotesk', sans-serif; font-size: 12.5px;
+  display: flex; align-items: center; gap: 8px; justify-content: space-between;
+}
+.sitebtn:hover { color: var(--text); }
+.sitebtn.on { color: var(--merge); }
+.sitebtn:focus-visible { outline: 2px solid var(--merge); outline-offset: -2px; }
+.sitebtn.dim { opacity: .3; }
+
+.meter { display: inline-flex; gap: 2px; vertical-align: middle; }
+.meter i { width: 9px; height: 3px; border-radius: 1px; display: block; }
+
+.detail { padding: 22px 22px 24px; }
+.region {
+  font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.14em;
+  text-transform: uppercase; color: var(--mute); margin-bottom: 8px;
+}
+.detail h2 {
+  font-family:'Space Grotesk',sans-serif; font-weight:600; font-size: 25px;
+  letter-spacing:-.02em; margin: 0 0 10px; line-height: 1.15;
+}
+.headline { font-size: 16.5px; color: var(--merge); margin: 0 0 12px; max-width: 62ch; }
+.why { color: var(--mute); font-size: 14.5px; margin: 0 0 20px; max-width: 68ch; }
+
+.cellrow { border-top: 1px solid var(--line); padding: 16px 0 4px; }
+.cellhead { display:flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.cellname { font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14.5px; letter-spacing:-.01em; }
+.cellname.off { color: var(--mute); text-decoration: line-through; text-decoration-thickness: 1px; }
+.meters { display:flex; gap: 12px; align-items:center; font-family:'IBM Plex Mono',monospace; font-size:9.5px; color: var(--mute); }
+.meters span { display:inline-flex; align-items:center; gap:5px; }
+
+.ev {
+  font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.06em;
+  padding: 2px 7px; border-radius: 2px; border: 1px solid var(--line); color: var(--mute); white-space: nowrap;
+}
+.ev-HP, .ev-HF { border-color:#3E5A46; color:#7ED09A; }
+.ev-HT { border-color:#3B4C66; color:#8FB4E8; }
+.ev-R  { border-color:#63501F; color: var(--warn); }
+
+.effect { font-size: 14.5px; margin: 0 0 10px; max-width: 70ch; }
+.act { border-left: 2px solid var(--merge); padding: 2px 0 2px 14px; margin: 0 0 12px; font-size: 14.5px; max-width: 70ch; }
+.act b {
+  font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.14em;
+  text-transform: uppercase; color: var(--mute); display: block; margin-bottom: 4px; font-weight: 500;
+}
+.act.none { border-left-color: var(--warn); }
+.hiddennote {
+  font-family:'IBM Plex Mono',monospace; font-size:10.5px; color: var(--warn);
+  border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px;
+}
+
+.nt { padding: 18px 20px; margin-bottom: 10px; }
+.nthead { display:flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+.nttissue { font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; letter-spacing:-.015em; }
+.ntverdict { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.1em; text-transform: uppercase; color: var(--warn); }
+
+.bars { margin: 8px 0 24px; }
+.barrow { display:grid; grid-template-columns: 108px 1fr; gap: 12px; align-items:center; margin-bottom: 10px; }
+@media (max-width: 620px) { .barrow { grid-template-columns: 92px 1fr; } }
+.barlabel { font-family:'IBM Plex Mono',monospace; font-size:10.5px; color: var(--mute); text-align: right; }
+.bartrack { background:#161E2E; height: 22px; border-radius: 2px; position: relative; overflow: hidden; }
+.barfill { height: 100%; opacity: .82; }
+.barval {
+  position: absolute; right: 8px; top: 0; height: 100%; display:flex; align-items:center;
+  font-family:'IBM Plex Mono',monospace; font-size:10.5px; color: var(--text);
+}
+.barnote { font-size: 13px; color: var(--mute); margin: -4px 0 14px 120px; }
+@media (max-width: 620px) { .barnote { margin-left: 104px; } }
+
+.pnote { padding: 18px 20px; margin-bottom: 10px; }
+.pnote h3 { font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; margin:0 0 8px; letter-spacing:-.015em; }
+.pnote p { margin: 0 0 8px; font-size: 14.5px; }
+.pnote p:last-child { margin-bottom: 0; }
+.pnote .mono { font-family:'IBM Plex Mono',monospace; font-size:12.5px; color: var(--gip); }
+
+.foot {
+  border-top: 1px solid var(--line); margin-top: 28px; padding-top: 16px;
+  font-family:'IBM Plex Mono',monospace; font-size:10.5px; color: var(--mute); line-height: 1.9;
+}
+.sectionlead { font-size:15px; color: var(--mute); max-width: 66ch; margin: 0 0 18px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Dual-channel receptor atlas · human tissue only</div>
+  <h1>One molecule, <span class="ch-glp">two channels</span>, <span class="ch-gip">about a dozen</span> cell types that matter.</h1>
+  <p class="lede">Tirzepatide does nothing anywhere without a receptor. This maps every human cell type known to carry GLP-1R or GIPR, what happens when the drug lands there, and what you can actually do about it. Rodent-only findings are flagged, because most of the popular story rests on them.</p>
+
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button class="tab" role="tab" data-tab="atlas" aria-selected="true">Where it binds</button>
+    <button class="tab" role="tab" data-tab="none" aria-selected="false">Where it doesn't</button>
+    <button class="tab" role="tab" data-tab="pharm" aria-selected="false">Why it behaves differently</button>
+  </div>
+
+  <section id="panel-atlas">
+    <div class="controls">
+      <button class="cube glp on" id="tg-glp" aria-pressed="true"><span class="dot"></span> GLP-1R channel</button>
+      <button class="cube gip on" id="tg-gip" aria-pressed="true"><span class="dot"></span> GIPR channel</button>
+      <button class="cube filt" id="tg-human" aria-pressed="false"><span class="dot"></span> Hide rodent-only evidence</button>
+      <span class="ctl-note" id="ctl-note">showing all evidence tiers</span>
+    </div>
+
+    <div class="grid">
+      <div class="card mapcard">
+        <svg viewBox="0 0 200 420" class="body-svg" role="group" aria-label="Human body receptor map">
+          <g class="figure">
+            <ellipse cx="100" cy="30" rx="19" ry="24"></ellipse>
+            <path d="M92 54 L92 62 M108 54 L108 62"></path>
+            <path d="M100 62 C74 66 62 76 60 96 L56 150 M100 62 C126 66 138 76 140 96 L144 150"></path>
+            <path d="M60 96 L62 226 C62 232 76 236 100 236 C124 236 138 232 138 226 L140 96"></path>
+            <path d="M58 104 L44 168 L40 208 M142 104 L156 168 L160 208"></path>
+            <path d="M84 236 L78 320 L74 400 M116 236 L122 320 L126 400"></path>
+          </g>
+          <g class="markers" id="markers"></g>
+        </svg>
+        <div class="maplegend">
+          <div><span class="swatch" style="background:#F0509B;box-shadow:0 0 8px #F0509B"></span>GLP-1R</div>
+          <div><span class="swatch" style="background:#2BD6D6;box-shadow:0 0 8px #2BD6D6"></span>GIPR</div>
+          <div><span class="swatch" style="background:#EEF3FF;box-shadow:0 0 8px #fff"></span>both — the channels overlap and read white</div>
+          <div style="margin-top:6px;opacity:.75">Dot size = receptor density (0–3)</div>
+        </div>
+        <ul class="sitelist" id="sitelist"></ul>
+      </div>
+      <div class="card detail" id="detail"></div>
+    </div>
+  </section>
+
+  <section id="panel-none" hidden>
+    <p class="sectionlead">Half of understanding this drug is knowing which effects arrive without a receptor. Everything below is a real effect with no direct target — which changes what you can do about it.</p>
+    <div id="nonTargets"></div>
+  </section>
+
+  <section id="panel-pharm" hidden>
+    <p class="sectionlead">Tirzepatide was built by engineering GLP-1 activity into the GIP backbone. It is not a balanced dual agonist, and it does not signal at GLP-1R the way GLP-1 does. Both facts are load-bearing.</p>
+
+    <div class="card pnote">
+      <h3>Signalling profile, relative to each native hormone</h3>
+      <div class="bars" id="bars"></div>
+      <p>At GIPR it behaves like the real hormone. At GLP-1R it drives cAMP while barely recruiting β-arrestin — so the receptor internalises less and stays available on the cell surface. In primary islets, β-arrestin1 limits the insulin response to GLP-1 but not to tirzepatide.</p>
+    </div>
+
+    <div class="card pnote">
+      <h3>Imbalanced toward GIPR</h3>
+      <p>Tirzepatide binds GIPR with affinity matching native GIP, but binds GLP-1R roughly <span class="mono">5× weaker</span> than native GLP-1. Receptor-occupancy modelling at clinical doses confirms greater GIPR engagement.</p>
+      <p><strong>Why this is practical:</strong> GLP-1R dose escalation is limited by nausea and vomiting. GIPR engagement isn't. Leaning the molecule toward GIPR is how you get more total incretin effect per unit of gastrointestinal misery.</p>
+    </div>
+
+    <div class="card pnote">
+      <h3>The rodent trap</h3>
+      <p>Tirzepatide is <span class="mono">far less potent at mouse GIPR than at human GIPR</span>. Any mouse study of this drug systematically underweights the GIP arm — the half that most distinguishes it from a GLP-1-only agonist.</p>
+      <p><strong>How to use this:</strong> when you meet a mechanistic claim about tirzepatide, check the species first. Mouse work here is a weak proxy in a specific, predictable direction.</p>
+    </div>
+
+    <div class="card pnote">
+      <h3>What adapts, and what doesn't</h3>
+      <p>Delayed gastric emptying shows clear tachyphylaxis — pronounced after the first dose, substantially attenuated after about four weekly doses. Appetite suppression, glucose lowering and weight loss do not fade the same way.</p>
+      <p><strong>Consequence:</strong> nausea and reflux are worst early and after each escalation, and genuinely improve. Constipation, driven by enteric neurons along the whole gut, is more persistent — manage it as an ongoing condition rather than waiting it out.</p>
+    </div>
+  </section>
+
+  <div class="foot">
+    <div>Evidence tiers — <span style="color:#7ED09A">human protein / human function</span>: validated antibody, radioligand binding, or measured response in people · <span style="color:#8FB4E8">human transcript</span>: single-cell or single-nucleus RNA sequencing of human tissue · <span style="color:#F0A93B">rodent only</span>: not confirmed in human tissue.</div>
+    <div style="margin-top:8px">Built from validated-antibody mapping of human and monkey tissue (Pyke 2014), human islet receptor reviews, human white adipose single-nucleus atlases, primary human osteoclast and osteoblast work, and tirzepatide receptor pharmacology (Willard 2020). This is a map of the biology, not medical advice — dosing and safety decisions belong with your clinician.</div>
+  </div>
+</div>
+
+<script>
+const C = { glp:"#F0509B", gip:"#2BD6D6", merge:"#EEF3FF", warn:"#F0A93B" };
+const EV = {
+  HP:{label:"human protein",tip:"Validated antibody or radioligand binding on human tissue"},
+  HT:{label:"human transcript",tip:"Single-cell / single-nucleus RNA sequencing of human tissue"},
+  HF:{label:"human function",tip:"Measured physiological response in living people"},
+  R:{label:"rodent only",tip:"Shown in mice, rats or shrews; not confirmed in human tissue"}
+};
+
+const SITES = [
+  { id:"hindbrain", label:"Area postrema & NTS", region:"Hindbrain · dorsal vagal complex", x:100, y:48, glp:3, gip:3,
+    headline:"The single most consequential site. Appetite and nausea are decided here.",
+    why:"Tirzepatide is a 4.8 kDa fatty-acylated peptide riding on albumin — far too big to cross an intact blood–brain barrier. Fluorescent tracer studies show it reaches the brain almost exclusively at circumventricular organs, where the barrier is deliberately leaky. This is the doorway.",
+    cells:[
+      { cell:"Glutamatergic area postrema neurons", glp:3, gip:0, ev:"R", mode:"direct",
+        effect:"Fire the aversion circuit: AP → NTS → parabrachial → amygdala. Suppresses eating and produces nausea through the same wire.",
+        action:"Nausea peaks in the 2–5 days after each dose increase, not randomly. If a step is rough, hold that dose another 4 weeks rather than pushing through — the receptor doesn't need a higher dose to keep working." },
+      { cell:"GABAergic area postrema neurons", glp:0, gip:3, ev:"R", mode:"direct",
+        effect:"Inhibit the neighbouring glutamatergic neurons. GIPR agonism blocks vomiting in ferrets and shrews, including chemotherapy-induced vomiting.",
+        action:"This is why tirzepatide causes less vomiting than an equipotent semaglutide dose — a built-in brake, not a weaker drug. It is not permission to escalate faster; the brake is partial." },
+      { cell:"NTS relay neurons", glp:2, gip:2, ev:"R", mode:"direct",
+        effect:"Integrate the blood-borne drug signal with vagal traffic arriving from the gut, then project onward to hypothalamus and amygdala.",
+        action:"Meal timing matters more than you'd expect: gut signal and drug signal sum here. Eating slowly lets the vagal half land before you're already full." }
+    ]},
+  { id:"hypothalamus", label:"Arcuate nucleus & median eminence", region:"Hypothalamus", x:100, y:27, glp:2, gip:2,
+    headline:"Reachable, but a supporting actor in humans.",
+    why:"The median eminence is the other circumventricular window. Labelled tirzepatide accumulates here. GIPR neurons in the hypothalamus reduce feeding by a mechanism distinct from the hindbrain population.",
+    cells:[
+      { cell:"Arcuate GLP-1R neurons", glp:2, gip:0, ev:"R", mode:"direct",
+        effect:"Shift the long-run set point for energy intake.",
+        action:"Expect appetite to feel structurally different — smaller portions feel finished — rather than feeling suppressed by willpower. Plan meals around protein first; the volume you'll accept drops before the nutrients you need do." },
+      { cell:"Hypothalamic GIPR neurons", glp:0, gip:2, ev:"R", mode:"direct",
+        effect:"Reduce food intake through connectivity and transcriptional profile distinct from AP and NTS GIPR neurons.",
+        action:"Human evidence here is thin. Treat any claim that tirzepatide 'rewires the hypothalamus' as extrapolation from mice." }
+    ]},
+  { id:"vagal", label:"Vagal afferent terminals", region:"Nodose ganglion & gut wall", x:88, y:74, glp:2, gip:0,
+    headline:"The gut-to-brain relay that makes a meal end early.",
+    why:"GLP-1R sits on sensory neurons carrying stretch and nutrient information from stomach and intestine up to the NTS. This route requires no barrier crossing at all.",
+    cells:[
+      { cell:"Vagal sensory neurons", glp:2, gip:0, ev:"R", mode:"direct",
+        effect:"Amplify the fullness signal from a given gastric volume.",
+        action:"Put the fork down at the first clear signal. On-drug, the signal arrives earlier and the penalty for overriding it (nausea, reflux) is much steeper than it was before." }
+    ]},
+  { id:"heart", label:"Sinoatrial node", region:"Heart", x:111, y:122, glp:3, gip:1,
+    headline:"GLP-1R in the human heart is confined to the pacemaker. Nowhere else.",
+    why:"Validated antibody plus radioligand binding put GLP-1R squarely in HCN4-positive sinoatrial node myocytes. Ventricular and atrial working myocardium is negative.",
+    cells:[
+      { cell:"Sinoatrial node myocytes", glp:3, gip:0, ev:"HP", mode:"direct",
+        effect:"Raise resting heart rate. Ambulatory monitoring in SURMOUNT-1 showed a dose-dependent rise of roughly 2–5 bpm over 24 hours.",
+        action:"A few extra beats per minute is expected physiology, not a warning sign — take a baseline resting pulse before you start so you can tell signal from noise. Get evaluated for a persistent resting rate above 100, new palpitations, or exertional breathlessness." },
+      { cell:"Ventricular cardiomyocytes", glp:0, gip:0, ev:"HP", mode:"none",
+        effect:"No receptor. Any effect on cardiac remodelling or heart failure is downstream of weight, blood pressure and inflammation.",
+        action:"When you read that tirzepatide 'acts on the heart', check whether the claim needs a receptor. Here, it doesn't have one." }
+    ]},
+  { id:"vessels", label:"Arterial & arteriolar smooth muscle", region:"Kidney, lung, systemic vasculature", x:131, y:180, glp:2, gip:1,
+    headline:"In kidney and lung, GLP-1R is exclusively vascular — not tubular, not alveolar.",
+    why:"The same validated-antibody survey found receptor only in the smooth muscle of arteries and arterioles. Renal tubule cells are negative, which reshapes how the kidney benefit should be explained.",
+    cells:[
+      { cell:"Vascular smooth muscle cells", glp:2, gip:0, ev:"HP", mode:"direct",
+        effect:"Vasodilation contributing to lower systolic blood pressure and altered intrarenal haemodynamics.",
+        action:"Recheck home blood pressure a few weeks in. If you take antihypertensives, this is a common reason doses need trimming — lightheadedness on standing is the usual first clue." },
+      { cell:"Renal tubular epithelium", glp:0, gip:0, ev:"HP", mode:"none",
+        effect:"No receptor. Natriuresis and albuminuria improvement arrive through blood flow, pressure and glycaemia.",
+        action:"Kidney protection is real and indirect. Don't expect a direct tubular drug effect." }
+    ]},
+  { id:"islet", label:"Pancreatic islet", region:"Pancreas", x:97, y:176, glp:3, gip:3,
+    headline:"The only place both receptors are strongly expressed on the same cell.",
+    why:"GLP-1R is close to a beta-cell-specific marker inside the human islet. GIPR is broader — beta cells, alpha cells, possibly delta cells. Tirzepatide's biased signalling at GLP-1R keeps more receptor on the membrane instead of internalising it.",
+    cells:[
+      { cell:"Beta cells", glp:3, gip:3, ev:"HP", mode:"direct",
+        effect:"Both receptors raise cAMP and amplify insulin release, but only when glucose is already elevated.",
+        action:"Glucose dependence is why tirzepatide alone rarely causes hypoglycaemia. Combined with a sulfonylurea or insulin it absolutely can — those doses usually need reducing at initiation, not after the first low." },
+      { cell:"Alpha cells", glp:0, gip:2, ev:"HT", mode:"direct",
+        effect:"GIPR stimulates glucagon when glucose is low, while GLP-1R signalling suppresses it when glucose is high.",
+        action:"Read this as a safety feature: the GIP arm leaves your counter-regulation intact. Glucose-adjusted glucagon still falls 28–36% across therapeutic doses." },
+      { cell:"Delta cells", glp:1, gip:1, ev:"HT", mode:"direct",
+        effect:"Somatostatin release acts as a local brake on both neighbours. Detection is dataset-dependent and genuinely uncertain.",
+        action:"Treat any confident claim about delta-cell incretin signalling as ahead of the data." },
+      { cell:"Acinar cells", glp:1, gip:0, ev:"HP", mode:"direct",
+        effect:"Weak GLP-1R expression, well below beta cells.",
+        action:"Worth knowing when weighing pancreatitis reports — but see the ducts." },
+      { cell:"Ductal epithelium", glp:0, gip:0, ev:"HP", mode:"none",
+        effect:"Consistently negative for GLP-1R across antibody and autoradiography studies.",
+        action:"The pancreatitis concern is a clinical-surveillance question, not a receptor-on-the-duct story. Sudden severe upper-abdominal pain radiating to the back still needs urgent assessment." }
+    ]},
+  { id:"stomach", label:"Stomach wall", region:"Gastric mucosa & muscularis", x:83, y:157, glp:2, gip:1,
+    headline:"Where delayed emptying comes from — and where the effect partly wears off.",
+    why:"GLP-1R is present in parietal cells and in smooth muscle of the muscularis externa, at lower density than the duodenum.",
+    cells:[
+      { cell:"Gastric smooth muscle", glp:2, gip:0, ev:"HP", mode:"direct",
+        effect:"Slows emptying markedly after the first doses. Tachyphylaxis develops after roughly four weekly doses; weight and glucose effects persist regardless.",
+        action:"Highest risk of retained stomach contents is early and in the days after each escalation. Tell any anaesthetist or endoscopist that you take this drug and when your last dose was — do not just stop it unilaterally before a procedure." },
+      { cell:"Parietal cells", glp:2, gip:0, ev:"HP", mode:"direct",
+        effect:"Modulates acid secretion.",
+        action:"Reflux is common early. Smaller volumes, less fat per meal, and staying upright for an hour after eating do more than anything else you can buy." }
+    ]},
+  { id:"duodenum", label:"Brunner's glands", region:"Duodenum", x:113, y:168, glp:3, gip:1,
+    headline:"The densest GLP-1R signal anywhere in the human gastrointestinal tract.",
+    why:"Higher than stomach, higher than intestine. Brunner's glands secrete alkaline mucus that protects the duodenum from gastric acid — an under-discussed target given how high the expression runs.",
+    cells:[
+      { cell:"Brunner's gland cells", glp:3, gip:0, ev:"HP", mode:"direct",
+        effect:"Function of this receptor in humans is not well characterised despite the striking density.",
+        action:"A useful calibration point: the strongest gut receptor signal sits in a tissue nobody markets. Be sceptical when a mechanism story maps too neatly onto the marketing." }
+    ]},
+  { id:"myenteric", label:"Myenteric plexus neurons", region:"Full length of the gut", x:100, y:200, glp:2, gip:0,
+    headline:"The enteric nervous system, from stomach to colon.",
+    why:"GLP-1R appears in myenteric plexus neurons throughout the gastrointestinal tract, not just proximally.",
+    cells:[
+      { cell:"Enteric neurons", glp:2, gip:0, ev:"HP", mode:"direct",
+        effect:"Slows transit along the whole tube. Constipation runs about 2.5% versus 0.9% on comparators; diarrhoea about 16% versus 9%.",
+        action:"Constipation does not reliably fade the way nausea does. Set up fluid, fibre and movement from week one rather than reacting in week six; osmotic laxatives are the usual next step." }
+    ]},
+  { id:"adipose", label:"White adipose tissue", region:"Subcutaneous & visceral fat", x:78, y:206, glp:0, gip:2,
+    headline:"The receptor is on the fat tissue's support cells — not on the fat cells.",
+    why:"Single-nucleus sequencing of human white adipose tissue localises GIPR to pericytes and mesothelial cells, with endothelium and macrophages also implicated. Attempts to knock Gipr out of adipocytes specifically failed to reduce tissue expression at all.",
+    cells:[
+      { cell:"Pericytes & mesothelial cells", glp:0, gip:2, ev:"HT", mode:"direct",
+        effect:"Raise adipose blood flow and triglyceride clearance — but only once insulin passes a threshold concentration.",
+        action:"This dependency explains the timeline. In people with obesity the blood-flow response is blunted, and weight loss partly restores it, so the GIP arm gets stronger as you go. Judge the fat-loss advantage at 6–12 months, not at 6 weeks." },
+      { cell:"Adipocytes", glp:0, gip:0, ev:"HT", mode:"none",
+        effect:"Not the major GIPR-expressing cell type in human white adipose tissue.",
+        action:"Retire the mental image of tirzepatide docking onto a fat cell. It's acting on the tissue's plumbing and lining." },
+      { cell:"Adipose tissue macrophages", glp:0, gip:1, ev:"R", mode:"direct",
+        effect:"Reduced pro-inflammatory M1 infiltration, tracking with improved insulin sensitivity.",
+        action:"Part of why insulin sensitivity improves more than weight loss alone predicts — weight explained only 13–21% of the HOMA2-IR improvement at higher doses." }
+    ]},
+  { id:"bone", label:"Bone remodelling surface", region:"Osteoclasts & osteoblasts", x:139, y:300, glp:0, gip:3,
+    headline:"GIPR is robustly expressed on mature human osteoclasts. This one is real and often missed.",
+    why:"RNA-seq of primary human osteoclasts and in situ hybridisation in human femoral bone both find GIPR. A common GIPR variant, Glu354Gln, tracks with lower bone mineral density and higher fracture risk.",
+    cells:[
+      { cell:"Mature osteoclasts", glp:0, gip:3, ev:"HP", mode:"direct",
+        effect:"GIP inhibits osteoclast formation, delays resorption and increases osteoclast apoptosis. Infusion drops the resorption marker CTX to roughly 50–60% of baseline.",
+        action:"The GIP arm is probably protective at the bone surface — but the calorie deficit driving weight loss is not. Load the skeleton: resistance training twice weekly, protein at roughly 1.2–1.6 g/kg, and adequate calcium and vitamin D. Ask about a DXA scan if you're postmenopausal, over 65, or planning years of treatment." },
+      { cell:"Osteoblasts", glp:0, gip:2, ev:"HP", mode:"direct",
+        effect:"Improved survival, without a clear increase in bone formation.",
+        action:"Preserving what you have is the realistic goal here, not building new bone." }
+    ]},
+  { id:"adrenal", label:"Adrenal cortex", region:"Adrenal gland", x:126, y:164, glp:0, gip:1,
+    headline:"Low normally. Occasionally, and pathologically, very high.",
+    why:"GIPR is among the receptors listed in normal adrenal cortex. Ectopic overexpression causes food-dependent Cushing syndrome, where cortisol spikes after meals instead of after ACTH.",
+    cells:[
+      { cell:"Adrenocortical cells", glp:0, gip:1, ev:"HP", mode:"direct",
+        effect:"Minimal in normal physiology; dramatic in the rare ectopic-receptor syndrome.",
+        action:"A curiosity for almost everyone. Worth knowing if you have unexplained Cushingoid features — the meal-linked pattern is the tell." }
+    ]}
+];
+
+const NON_TARGETS = [
+  { tissue:"Hepatocytes & hepatic stellate cells", verdict:"No functional receptor",
+    detail:"Neither GLP-1R nor GIPR agonism has direct action in human hepatocytes or stellate cells. Improvement in liver fat and MASH is downstream of weight loss, insulin sensitivity and reduced fatty acid flux.",
+    action:"Real benefit, indirect route. It also means liver improvement tracks with the metabolic changes — if weight and glycaemia stall, don't expect the liver to keep improving on its own." },
+  { tissue:"Skeletal muscle fibres", verdict:"No meaningful GLP-1R",
+    detail:"Lean mass loss on incretin therapy is what an energy deficit does to muscle, not a receptor-mediated catabolic effect.",
+    action:"This is the most actionable non-finding on the page. Resistance training and protein intake protect lean mass here exactly as they would in any other deficit. Nothing about the drug blocks that." },
+  { tissue:"Thyroid C cells (human)", verdict:"Contested — very low or absent",
+    detail:"Rodent C cells express GLP-1R and proliferate. Human and monkey C cells show low expression and no adenylate cyclase or calcitonin response. One immunofluorescence study found receptor in about a third of C cells in 5 of 15 normal thyroids; a separate antibody-plus-autoradiography study found none at all.",
+    action:"The MEN2 and medullary thyroid carcinoma contraindication is precautionary and still stands — declare a family history. But a rodent tumour signal that fails to reproduce in primates is weak ground for personal alarm." },
+  { tissue:"White adipocytes", verdict:"Receptor is on the neighbours",
+    detail:"Human GIPR in white adipose tissue localises to pericytes and mesothelial cells.",
+    action:"Judge adipose effects as tissue-level remodelling, not fat-cell-level signalling." },
+  { tissue:"Pancreatic ductal epithelium", verdict:"GLP-1R negative",
+    detail:"Consistently negative across validated antibody and autoradiography work.",
+    action:"Keep clinical vigilance for pancreatitis; drop the ductal-receptor mechanism from your model." },
+  { tissue:"Gallbladder smooth muscle", verdict:"Not well mapped in humans",
+    detail:"Gallbladder and biliary complications are documented clinically, but the mechanism runs through reduced meal-driven CCK signalling and altered motility rather than a mapped human receptor.",
+    action:"Rapid weight loss is itself a gallstone risk. Persistent right-upper-quadrant pain after eating deserves an ultrasound, not a wait-and-see." }
+];
+
+const PHARM = [
+  { receptor:"GIPR", pathway:"cAMP", value:100, note:"Full agonist, essentially equipotent with native GIP" },
+  { receptor:"GIPR", pathway:"β-arrestin", value:95, note:"Full agonism, close to equipotent with native GIP" },
+  { receptor:"GLP-1R", pathway:"cAMP", value:51, note:"Potent partial agonist by GTPγS binding" },
+  { receptor:"GLP-1R", pathway:"β-arrestin", value:8, note:"Under 10% of maximum — the defining bias" }
+];
+
+/* ---------- state ---------- */
+const state = { tab:"atlas", active:"hindbrain", glp:true, gip:true, humanOnly:false };
+
+/* ---------- helpers ---------- */
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+const meter = (v, color, label) =>
+  `<span class="meter" title="${label} density ${v}/3" aria-label="${label} density ${v} of 3">` +
+  [1,2,3].map(i => `<i style="background:${i<=v?color:"#1C2434"}"></i>`).join("") + `</span>`;
+const evChip = (code) => `<span class="ev ev-${code}" title="${esc(EV[code].tip)}">${esc(EV[code].label)}</span>`;
+
+/* ---------- render: body map ---------- */
+function renderMap() {
+  const g = document.getElementById("markers");
+  g.innerHTML = "";
+  SITES.forEach(s => {
+    const gv = state.glp ? s.glp : 0;
+    const pv = state.gip ? s.gip : 0;
+    if (gv === 0 && pv === 0) return;
+    const rG = 3 + gv * 1.9, rP = 3 + pv * 1.9;
+    const off = (gv > 0 && pv > 0) ? 2.6 : 0;
+    const isActive = state.active === s.id;
+
+    const node = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    node.setAttribute("class", "marker" + (isActive ? " on" : ""));
+    node.setAttribute("transform", `translate(${s.x} ${s.y})`);
+    node.setAttribute("tabindex", "0");
+    node.setAttribute("role", "button");
+    node.setAttribute("aria-label", s.label);
+    node.innerHTML =
+      `<circle class="hit" r="13"></circle>` +
+      (isActive ? `<circle class="ring" r="${Math.max(rG,rP)+5.5}"></circle>` : "") +
+      `<g class="blend">` +
+        (gv > 0 ? `<circle cx="${-off}" cy="0" r="${rG}" fill="${C.glp}"></circle>` : "") +
+        (pv > 0 ? `<circle cx="${off}" cy="0" r="${rP}" fill="${C.gip}"></circle>` : "") +
+      `</g>`;
+    const pick = () => { state.active = s.id; renderAtlas(); };
+    node.addEventListener("click", pick);
+    node.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); }
+    });
+    g.appendChild(node);
+  });
+}
+
+/* ---------- render: site list ---------- */
+function renderList() {
+  const ul = document.getElementById("sitelist");
+  ul.innerHTML = SITES.map(s => {
+    const dim = (!state.glp || s.glp === 0) && (!state.gip || s.gip === 0);
+    return `<li><button class="sitebtn${state.active===s.id?" on":""}${dim?" dim":""}" data-site="${s.id}">
+      <span>${esc(s.label)}</span>
+      <span style="display:flex;gap:5px">
+        ${state.glp ? meter(s.glp, C.glp, "GLP-1R") : ""}
+        ${state.gip ? meter(s.gip, C.gip, "GIPR") : ""}
+      </span></button></li>`;
+  }).join("");
+  ul.querySelectorAll("[data-site]").forEach(b =>
+    b.addEventListener("click", () => { state.active = b.dataset.site; renderAtlas(); })
+  );
+}
+
+/* ---------- render: detail ---------- */
+function renderDetail() {
+  const site = SITES.find(s => s.id === state.active) || SITES[0];
+  const visible = site.cells.filter(c => {
+    if (state.humanOnly && c.ev === "R") return false;
+    const chan = (state.glp && c.glp > 0) || (state.gip && c.gip > 0);
+    return chan || c.mode === "none";
+  });
+  const hidden = site.cells.length - visible.length;
+
+  document.getElementById("detail").innerHTML =
+    `<div class="region">${esc(site.region)}</div>
+     <h2>${esc(site.label)}</h2>
+     <p class="headline">${esc(site.headline)}</p>
+     <p class="why">${esc(site.why)}</p>` +
+    visible.map(c => `
+      <div class="cellrow">
+        <div class="cellhead">
+          <span class="cellname${c.mode==="none"?" off":""}">${esc(c.cell)}</span>
+          <span class="meters">
+            <span>GLP-1R ${meter(c.glp, C.glp, "GLP-1R")}</span>
+            <span>GIPR ${meter(c.gip, C.gip, "GIPR")}</span>
+          </span>
+          ${evChip(c.ev)}
+        </div>
+        <p class="effect">${esc(c.effect)}</p>
+        <div class="act${c.mode==="none"?" none":""}">
+          <b>${c.mode==="none"?"Correct the model":"What to do with this"}</b>${esc(c.action)}
+        </div>
+      </div>`).join("") +
+    (hidden > 0 ? `<div class="hiddennote">${hidden} row${hidden>1?"s":""} hidden by your current channel or evidence filter.</div>` : "");
+}
+
+function renderAtlas() { renderMap(); renderList(); renderDetail(); }
+
+/* ---------- render: static tabs ---------- */
+function renderStatic() {
+  document.getElementById("nonTargets").innerHTML = NON_TARGETS.map(n => `
+    <div class="card nt">
+      <div class="nthead">
+        <span class="nttissue">${esc(n.tissue)}</span>
+        <span class="ntverdict">${esc(n.verdict)}</span>
+      </div>
+      <p class="effect">${esc(n.detail)}</p>
+      <div class="act"><b>What to do with this</b>${esc(n.action)}</div>
+    </div>`).join("");
+
+  document.getElementById("bars").innerHTML = PHARM.map(p => `
+    <div>
+      <div class="barrow">
+        <div class="barlabel">${esc(p.receptor)} · ${esc(p.pathway)}</div>
+        <div class="bartrack">
+          <div class="barfill" style="width:${p.value}%;background:${p.receptor==="GIPR"?C.gip:C.glp}"></div>
+          <div class="barval">${p.value}%</div>
+        </div>
+      </div>
+      <div class="barnote">${esc(p.note)}</div>
+    </div>`).join("");
+}
+
+/* ---------- controls ---------- */
+function syncControls() {
+  const set = (el, on) => { el.classList.toggle("on", on); el.setAttribute("aria-pressed", String(on)); };
+  set(document.getElementById("tg-glp"), state.glp);
+  set(document.getElementById("tg-gip"), state.gip);
+  set(document.getElementById("tg-human"), state.humanOnly);
+  document.getElementById("ctl-note").textContent =
+    state.humanOnly ? "showing human tissue evidence only" : "showing all evidence tiers";
+}
+
+document.getElementById("tg-glp").addEventListener("click", () => { state.glp = !state.glp; syncControls(); renderAtlas(); });
+document.getElementById("tg-gip").addEventListener("click", () => { state.gip = !state.gip; syncControls(); renderAtlas(); });
+document.getElementById("tg-human").addEventListener("click", () => { state.humanOnly = !state.humanOnly; syncControls(); renderDetail(); });
+
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    state.tab = t.dataset.tab;
+    document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", String(x.dataset.tab === state.tab)));
+    ["atlas","none","pharm"].forEach(id =>
+      document.getElementById("panel-" + id).hidden = (id !== state.tab)
+    );
+  });
+});
+
+renderStatic();
+syncControls();
+renderAtlas();
+</script>
+</body>
+</html>
