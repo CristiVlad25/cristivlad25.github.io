@@ -186,7 +186,28 @@ h1 .ch-gip { color: var(--gip); }
 [hidden] { display: none !important; }
 </style>
 </head>
-<body>
+<body><style>
+  .cv-nav{
+    font:11px/1 "IBM Plex Mono",ui-monospace,Menlo,monospace;
+    letter-spacing:.14em;text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;
+    padding:14px 28px;
+    background:#0B0E13;
+    border-bottom:1px solid #1F2630;
+    position:relative;z-index:9999;
+  }
+  .cv-nav a{color:#7D8794;text-decoration:none;transition:color .14s ease}
+  .cv-nav a:hover,.cv-nav a:focus-visible{color:#E6E9ED}
+  .cv-nav span{color:#39434F}
+  @media (max-width:620px){ .cv-nav{padding:12px 20px} }
+  @media (prefers-reduced-motion:reduce){ .cv-nav a{transition:none} }
+</style>
+
+<nav class="cv-nav">
+  <a href="/">Cristi Vlad</a>
+  <span>/</span>
+  <a href="/#bio">Bio</a>
+</nav>
 <div class="wrap">
   <div class="eyebrow">Dual-channel receptor atlas · human tissue only</div>
   <h1>One molecule, <span class="ch-glp">two channels</span>, <span class="ch-gip">about a dozen</span> cell types that matter.</h1>
