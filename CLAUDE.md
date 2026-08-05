@@ -212,8 +212,8 @@ on genre:
 - **Synthesis:** the scope, in the same mono style. `Training · Serving · Cost`,
   `Kernel · Userland · Network`. Three words maximum, tightest first.
 
-Never a vague placeholder. "OpenAI 2026 / Others" is neither a citation nor a scope -
-if the page is a synthesis, describe what it covers instead.
+Never a vague placeholder. A company name plus a year plus "others" is neither a
+citation nor a scope - if the page is a synthesis, describe what it covers instead.
 
 `<h2>` matches the page's `<title>`. `<p>` is one concrete sentence about what's
 interrogable, not a summary of the subject.
