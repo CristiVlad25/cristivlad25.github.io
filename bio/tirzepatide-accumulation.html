@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tirzepatide Accumulation · what stacks up between weekly injections</title>
+<meta name="description" content="A synthesis of tirzepatide pharmacokinetics turned into a model you can move: how a 5-day half-life, an 8 to 72 hour absorption peak, and a 4-week escalation ladder combine into levels that keep climbing for months.">
+<meta property="og:title" content="Tirzepatide Accumulation · what stacks up between weekly injections">
+<meta property="og:description" content="Why a once-weekly drug with a 5-day half-life takes a month to settle, what a missed injection actually costs, and where the model stops being trustworthy.">
+<meta property="og:type" content="article">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+:root{
+  --ink:#0B0E13; --panel:#10141B; --rule:#1F2630; --rule-lit:#39434F;
+  --text:#E6E9ED; --dim:#7D8794; --bio:#4FD1A5;
+  --curve:#4FD1A5; --compare:#2BD6D6; --now:#F0A93B; --miss:#E0645E;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+}
+html, body { margin:0; padding:0; background:var(--ink); }
+body{
+  color:var(--text); font-family:var(--sans); font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{ max-width:1000px; margin:0 auto; padding:0 28px 72px; }
+@media (max-width:620px){ .wrap{ padding:0 18px 56px; } }
+
+/* ---------- nav ---------- */
+.cv-nav{
+  font:11px/1 var(--mono);
+  letter-spacing:.14em; text-transform:uppercase;
+  display:flex; align-items:center; gap:10px;
+  padding:14px 28px;
+  background:#0B0E13;
+  border-bottom:1px solid var(--rule);
+  position:relative; z-index:9999;
+}
+.cv-nav a{ color:var(--dim); text-decoration:none; transition:color .14s ease }
+.cv-nav a:hover,.cv-nav a:focus-visible{ color:var(--text) }
+.cv-nav span{ color:var(--rule-lit) }
+@media (max-width:620px){ .cv-nav{ padding:12px 18px } }
+
+/* ---------- scope strip ---------- */
+.cv-scope{
+  max-width:1000px; margin:0 auto; padding:13px 28px;
+  font:10px/1.7 var(--mono); letter-spacing:.14em; text-transform:uppercase;
+  color:var(--dim); border-bottom:1px solid var(--rule);
+}
+.cv-scope b{ color:var(--dim); font-weight:500 }
+@media (max-width:620px){ .cv-scope{ padding:12px 18px } }
+
+/* ---------- header ---------- */
+header{ padding-top:42px; }
+.eyebrow{
+  font:10.5px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
+  color:var(--bio); margin-bottom:14px;
+}
+h1{
+  font-family:var(--cond); font-weight:700;
+  font-size:clamp(26px,4.6vw,44px); line-height:1.05; letter-spacing:-.025em;
+  margin:0 0 16px; max-width:22ch;
+}
+h1 em{ font-style:normal; color:var(--dim) }
+.lede{ color:var(--dim); max-width:64ch; font-size:15.5px; margin:0 0 14px }
+.lede strong{ color:var(--text); font-weight:500 }
+.disclaimer{
+  color:var(--dim); max-width:64ch; font-size:12.8px; line-height:1.6;
+  margin:0 0 30px; padding-left:12px; border-left:2px solid var(--bio);
+}
+
+/* ---------- generic blocks ---------- */
+.card{ background:var(--panel); border:1px solid var(--rule); border-radius:3px; }
+h2.sec{
+  font-family:var(--cond); font-weight:700; font-size:19px; letter-spacing:-.01em;
+  color:var(--text); margin:34px 0 10px; padding-top:16px; border-top:1px solid var(--rule);
+}
+h2.sec span{
+  font:10px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
+  color:var(--bio); margin-left:10px;
+}
+.lbl{
+  font:10.5px/1 var(--mono); letter-spacing:.12em; text-transform:uppercase;
+  color:var(--dim); margin-bottom:7px;
+}
+
+/* ---------- schedule controls ---------- */
+.sched{ padding:15px 16px; margin:0 0 14px; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; }
+.fld{
+  border:1px solid var(--rule-lit); border-radius:2px; padding:7px 9px;
+  font:inherit; font-size:13px; color:var(--text); background:var(--ink);
+  font-family:var(--mono);
+}
+.seg{ display:flex; gap:6px; }
+.seg button{
+  font:12px/1 var(--mono); letter-spacing:.06em; padding:9px 12px; border-radius:2px;
+  border:1px solid var(--rule-lit); background:transparent; color:var(--dim); cursor:pointer;
+}
+.seg button.on{ border-color:var(--bio); color:var(--bio); }
+
+/* ---------- stats ---------- */
+.stats{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.stat{ flex:1 1 150px; min-width:140px; padding:13px 15px; }
+.stat .k{ font:10px/1.4 var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin-bottom:8px; }
+.stat .v{ font-family:var(--cond); font-size:27px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.stat .u{ font:12px/1 var(--mono); color:var(--dim); margin-left:5px; letter-spacing:.04em; }
+
+/* ---------- chart ---------- */
+.chartcard{ padding:13px 8px 8px; position:relative; }
+.legend{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; padding:2px 10px 10px; font:11px/1.5 var(--mono); letter-spacing:.04em; }
+.legend .it{ display:inline-flex; align-items:center; gap:7px; }
+.sw-v{ width:2px; height:12px; display:inline-block; }
+.sw-h{ width:16px; height:2px; display:inline-block; }
+.sw-d{ width:16px; height:0; border-top:2px dashed var(--compare); display:inline-block; }
+#chart{ width:100%; display:block; touch-action:pan-y; }
+#tip{
+  position:absolute; pointer-events:none; background:var(--ink);
+  border:1px solid var(--rule-lit); border-radius:2px; padding:8px 10px;
+  font:11.5px/1.6 var(--mono); letter-spacing:.03em; color:var(--text);
+  display:none; z-index:5; white-space:nowrap;
+}
+#tip .d{ color:var(--dim); margin-bottom:3px; }
+
+/* ---------- chips ---------- */
+.chips{ display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 4px; }
+.chip{
+  font:11px/1 var(--mono); letter-spacing:.04em; padding:7px 9px; border-radius:2px;
+  border:1px solid var(--rule); background:transparent; color:var(--dim); cursor:pointer;
+}
+.chip:hover{ border-color:var(--rule-lit); color:var(--text); }
+.chip.skip{ border-color:var(--miss); color:var(--miss); text-decoration:line-through; }
+.chip .mg{ color:var(--text); }
+.chip.skip .mg{ color:var(--miss); }
+.resetline{ font:11px/1.6 var(--mono); letter-spacing:.04em; color:var(--dim); margin:8px 0 0; }
+.resetline button{
+  font:inherit; background:none; border:0; border-bottom:1px solid var(--rule-lit);
+  color:var(--dim); cursor:pointer; padding:0;
+}
+.resetline button:hover{ color:var(--text); }
+
+/* ---------- sliders ---------- */
+.sliders{ display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end; margin:4px 0 14px; }
+.sliders label{ display:block; flex:1 1 205px; min-width:180px; }
+.sl-head{ display:flex; justify-content:space-between; gap:10px; font:11px/1.4 var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--dim); margin-bottom:9px; }
+.sl-head b{ font-weight:500; color:var(--bio); font-variant-numeric:tabular-nums; text-transform:none; letter-spacing:.02em; }
+.sl-note{ font:10px/1.5 var(--mono); letter-spacing:.05em; color:var(--dim); margin-top:7px; }
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:3px; border-radius:2px;
+  background:var(--rule-lit); outline:none; margin:0;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+  background:var(--ink); border:2px solid var(--bio); cursor:pointer;
+}
+input[type=range]::-moz-range-thumb{
+  width:13px; height:13px; border-radius:50%; background:var(--ink);
+  border:2px solid var(--bio); cursor:pointer;
+}
+#compRow{ display:none; }
+#compRow .sl-head b{ color:var(--compare); }
+#compRow input[type=range]::-webkit-slider-thumb{ border-color:var(--compare); }
+#compRow input[type=range]::-moz-range-thumb{ border-color:var(--compare); }
+
+/* ---------- toggles ---------- */
+.tgls{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+.tgl{
+  font:11px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase;
+  padding:9px 13px; border-radius:2px; border:1px solid var(--rule);
+  background:transparent; color:var(--dim); cursor:pointer; transition:color .14s ease, border-color .14s ease;
+}
+.tgl.on{ border-color:var(--bio); color:var(--bio); }
+
+/* ---------- focus ---------- */
+a:focus-visible, button:focus-visible, select:focus-visible,
+input:focus-visible, .fld:focus-visible{
+  outline:2px solid var(--bio); outline-offset:2px;
+}
+.fld:focus{ border-color:var(--bio); }
+
+/* ---------- formula ---------- */
+pre.formula{
+  margin:0; padding:16px 16px; overflow-x:auto;
+  font:12px/1.85 var(--mono); letter-spacing:.02em; color:var(--text);
+  background:var(--panel); border:1px solid var(--rule); border-radius:3px;
+}
+pre.formula b{ color:var(--bio); font-weight:500; }
+pre.formula i{ color:var(--dim); font-style:normal; }
+
+/* ---------- prose + tables ---------- */
+.prose{ max-width:66ch; color:var(--dim); font-size:14.5px; }
+.prose p{ margin:0 0 12px }
+.prose strong{ color:var(--text); font-weight:500 }
+.tbl{ width:100%; border-collapse:collapse; margin:6px 0 0; font-size:13px; }
+.tbl th{
+  text-align:left; font:10px/1.5 var(--mono); letter-spacing:.12em; text-transform:uppercase;
+  color:var(--dim); font-weight:400; padding:0 12px 9px 0; border-bottom:1px solid var(--rule);
+  vertical-align:bottom;
+}
+.tbl td{ padding:11px 12px 11px 0; border-bottom:1px solid var(--rule); color:var(--dim); vertical-align:top; }
+.tbl td:first-child{ color:var(--text); }
+.tbl td.num{ font-family:var(--mono); font-size:12px; white-space:nowrap; color:var(--text); }
+.tier{
+  font:9.5px/1 var(--mono); letter-spacing:.12em; text-transform:uppercase;
+  border:1px solid currentColor; border-radius:2px; padding:3px 6px; display:inline-block; white-space:nowrap;
+}
+.tier.measured{ color:var(--bio) }
+.tier.chosen{ color:var(--now) }
+.tier.simplif{ color:var(--miss) }
+.scroller{ overflow-x:auto; }
+@media (max-width:640px){
+  .tbl, .tbl tbody, .tbl tr, .tbl td{ display:block; width:100%; }
+  .tbl thead{ display:none; }
+  .tbl tr{ padding:15px 0 4px; border-bottom:1px solid var(--rule); }
+  .tbl td{ border:0; padding:0 0 9px; }
+  .tbl td::before{
+    content:attr(data-l); display:block; margin-bottom:3px;
+    font:9.5px/1.6 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--dim);
+  }
+  .tbl td:first-child{ font-weight:500; font-size:14px; }
+  .tbl td:first-child::before{ display:none; }
+}
+
+/* ---------- sources ---------- */
+.sources{ margin-top:44px; padding-top:26px; border-top:1px solid var(--rule); }
+.sources h2{
+  font:10px/1 var(--mono); letter-spacing:.18em; text-transform:uppercase;
+  color:var(--dim); font-weight:400; margin:0 0 18px;
+}
+.sources ul{ list-style:none; margin:0; padding:0; display:grid; gap:11px; }
+.sources li{ font-size:13px; line-height:1.6; color:var(--dim); max-width:78ch; }
+.sources a{ color:var(--dim); text-decoration:none; border-bottom:1px solid var(--rule-lit); }
+.sources a:hover, .sources a:focus-visible{ color:var(--text); }
+.sources em{ color:var(--dim); font-style:normal; }
+.sources .note{ margin:26px 0 0; max-width:70ch; font-size:12.5px; line-height:1.65; color:var(--dim); }
+noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
+
+@media (prefers-reduced-motion:reduce){ *{ transition:none!important; animation:none!important; } }
+</style>
+</head>
+<body>
+
+<nav class="cv-nav">
+  <a href="/">Cristi Vlad</a>
+  <span>/</span>
+  <a href="/#bio">Bio</a>
+</nav>
+
+<p class="cv-scope">Synthesis <b>·</b> Absorption <b>·</b> Clearance <b>·</b> Accumulation <b>·</b> assembled from label pharmacokinetics and standard compartmental theory, not a reading of one paper</p>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Tirzepatide · dose accumulation model</div>
+    <h1>One injection a week, and a body that <em>takes a month to catch up.</em></h1>
+    <p class="lede">This is a <strong>synthesis</strong>, not a close reading: it assembles the published pharmacokinetics of tirzepatide into a working model you can move. A half-life near five days and a dosing interval of seven means each injection lands on top of what is left of the previous ones. Levels climb for weeks after nothing about the prescription has changed, and the standard escalation ladder restarts that climb every time the dose goes up.</p>
+    <p class="lede">The curve below is <strong>modelled milligrams in the body</strong>, not a blood test. It is a quantity no laboratory reports and this page does not predict one. What it is good for is shape: how long the climb lasts, how deep a missed injection cuts, and how much of the sawtooth is real.</p>
+    <p class="disclaimer">This page describes mechanism. It is not medical advice, it is not a dosing tool, and reading it creates no clinical relationship. Dosing, escalation, missed doses, and every safety question belong with your own prescriber, who knows things about you that a population average cannot.</p>
+  </header>
+
+  <h2 class="sec">The model, running <span>set the schedule</span></h2>
+
+  <noscript>The interactive model needs JavaScript. The framing above, the parameter table, and the source list below are the static part of this page and carry the substance of it.</noscript>
+
+  <div class="card sched">
+    <label><div class="lbl">First injection</div><input class="fld" type="date" id="startDate"></label>
+    <label><div class="lbl">Time of day</div><input class="fld" type="time" id="startTime" value="12:00"></label>
+    <div>
+      <div class="lbl">Window</div>
+      <div class="seg"><button id="w90" class="on" aria-pressed="true">90 days</button><button id="w180" aria-pressed="false">180 days</button></div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="card stat"><div class="k">In the body now</div><div class="v" style="color:var(--now)" id="stNow">-</div></div>
+    <div class="card stat"><div class="k">Of steady-state average</div><div class="v" id="stPct">-</div></div>
+    <div class="card stat"><div class="k">Steady state at target</div><div class="v" id="stSS">-</div></div>
+    <div class="card stat"><div class="k">Peak in window</div><div class="v" id="stPeak">-</div></div>
+    <div class="card stat"><div class="k">Settling time</div><div class="v" id="stTss">-</div></div>
+  </div>
+
+  <div class="card chartcard">
+    <div class="legend" id="legend"></div>
+    <svg id="chart" viewBox="0 0 900 380" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Modelled milligrams of tirzepatide in the body over time"></svg>
+    <div id="tip"></div>
+  </div>
+
+  <div class="lbl" style="margin-top:18px">Injections · select one to simulate skipping it</div>
+  <div class="chips" id="chips"></div>
+  <p class="resetline" id="resetLine"></p>
+
+  <h2 class="sec">The parameters <span>and where each one comes from</span></h2>
+
+  <div class="sliders">
+    <label><div class="sl-head"><span id="doseLabel">Target dose</span><b id="vDose"></b></div>
+      <input type="range" id="targetMg" min="2.5" max="15" step="2.5" value="5">
+      <div class="sl-note">Label ladder: 2.5, 5, 7.5, 10, 12.5, 15 mg</div></label>
+    <label><div class="sl-head"><span>Dosing interval</span><b id="vInt"></b></div>
+      <input type="range" id="intervalDays" min="3" max="14" step="1" value="7">
+      <div class="sl-note">Label interval is 7 days; others are hypothetical</div></label>
+    <label><div class="sl-head"><span>Half-life</span><b id="vHl"></b></div>
+      <input type="range" id="halfLife" min="4" max="7" step="0.25" value="5">
+      <div class="sl-note">Label says about 5 days; the spread is illustrative</div></label>
+    <label><div class="sl-head"><span>Time to peak</span><b id="vTmax"></b></div>
+      <input type="range" id="tmaxHours" min="8" max="72" step="1" value="34">
+      <div class="sl-note">Label range for t-max is 8 to 72 h; this sets k-a</div></label>
+    <label id="compRow"><div class="sl-head"><span>Comparison dose</span><b id="vComp"></b></div>
+      <input type="range" id="compareMg" min="2.5" max="15" step="2.5" value="10">
+      <div class="sl-note">Same schedule, different target</div></label>
+  </div>
+
+  <div class="tgls">
+    <button class="tgl on" id="tEsc" aria-pressed="true">Escalation ladder</button>
+    <button class="tgl on" id="tDoses" aria-pressed="true">Injection markers</button>
+    <button class="tgl on" id="tSS" aria-pressed="true">Steady-state line</button>
+    <button class="tgl" id="tComp" aria-pressed="false">Compare a dose</button>
+  </div>
+
+  <h2 class="sec">The arithmetic <span>nothing hidden</span></h2>
+
+  <pre class="formula" id="formula">one-compartment model, first-order absorption and elimination
+
+  k_e  = ln2 / t_half
+  t_max(k_a) = ln(k_a / k_e) / (k_a - k_e)      solved numerically for k_a
+  A(t) = sum over injections i already given of
+           F * D_i * k_a/(k_a - k_e) * ( exp(-k_e*u) - exp(-k_a*u) ),   u = t - t_i
+  A_ss = F * D / (k_e * interval)               average at steady state
+  t_ss ~ 4 to 5 half-lives</pre>
+
+  <h2 class="sec">Which numbers are checkable <span>and which are chosen</span></h2>
+
+  <div class="scroller">
+  <table class="tbl">
+    <thead><tr><th>Quantity</th><th>Value here</th><th>Tier</th><th>Where it comes from</th></tr></thead>
+    <tbody>
+      <tr><td data-l="Quantity">Absolute bioavailability, F</td><td class="num" data-l="Value here">0.80</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Mounjaro prescribing information, section 12.3. Reported as a mean of 80% after subcutaneous administration.</td></tr>
+      <tr><td data-l="Quantity">Elimination half-life</td><td class="num" data-l="Value here">~5 days</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Section 12.3, and confirmed independently by the population model in Schneck 2024 across 19 pooled studies.</td></tr>
+      <tr><td data-l="Quantity">Half-life slider range</td><td class="num" data-l="Value here">4 to 7 days</td><td data-l="Tier"><span class="tier chosen">Chosen</span></td><td data-l="Where it comes from">Not a published confidence interval. A plausible spread, put on a control so the reader can see how little the shape depends on it.</td></tr>
+      <tr><td data-l="Quantity">Time to peak, t-max</td><td class="num" data-l="Value here">8 to 72 h</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Section 12.3 gives this as the observed range. The default of 34 h sits near the middle of it.</td></tr>
+      <tr><td data-l="Quantity">Absorption constant, k-a</td><td class="num" data-l="Value here">derived</td><td data-l="Tier"><span class="tier chosen">Chosen</span></td><td data-l="Where it comes from">Not published anywhere. Solved from your t-max and k-e, which is why t-max is the control and k-a is only the readout.</td></tr>
+      <tr><td data-l="Quantity">Apparent clearance</td><td class="num" data-l="Value here">0.061 L/h</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Section 12.3. Used here only as a cross-check: 0.061 divided by the 10.3 L apparent volume gives a half-life of 4.9 days, which agrees with the stated 5.</td></tr>
+      <tr><td data-l="Quantity">Apparent volume</td><td class="num" data-l="Value here">10.3 L</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Section 12.3, mean apparent steady-state volume in type 2 diabetes. Not used to draw the curve.</td></tr>
+      <tr><td data-l="Quantity">Escalation ladder</td><td class="num" data-l="Value here">+2.5 mg / 4 wk</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Section 2.1: start at 2.5 mg weekly, increase to 5 mg after 4 weeks, then in 2.5 mg increments after at least 4 weeks on the current dose, to a maximum of 15 mg.</td></tr>
+      <tr><td data-l="Quantity">Number of compartments</td><td class="num" data-l="Value here">1</td><td data-l="Tier"><span class="tier simplif">Simplified</span></td><td data-l="Where it comes from">The published population model is two-compartment (Schneck 2024). One compartment reproduces accumulation and the weekly sawtooth but flattens the early distribution phase after each injection.</td></tr>
+      <tr><td data-l="Quantity">Between-person variability</td><td class="num" data-l="Value here">none</td><td data-l="Tier"><span class="tier simplif">Simplified</span></td><td data-l="Where it comes from">Every curve here is one population-average person. Body weight is the largest covariate in the published model and is not represented at all.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 class="sec">How to read the curve <span>and what it will not tell you</span></h2>
+
+  <div class="prose">
+    <p>Each injection contributes a rise over roughly one to two days followed by a slow decline, and the curve is the sum of every injection so far. Because seven days is only about 1.4 half-lives, most of a dose is still present when the next one arrives. Levels therefore climb until what goes in each week equals what is cleared each week, which takes four to five half-lives: <strong>roughly 20 to 25 days at a five-day half-life</strong>. The label states the same thing from the measurement side, that steady-state concentrations were reached after four weeks of once-weekly dosing.</p>
+    <p>Settling does not mean flat. At 5 mg weekly with a five-day half-life the model puts the steady-state average near 4.1 mg, with the weekly peak around 5.5 mg and the trough just under 2.6 mg: a swing of more than two to one across a single week. That ratio is set almost entirely by the interval divided by the half-life, which is why the interval slider moves the sawtooth far more than the half-life slider does.</p>
+    <p>The escalation ladder is the part people underestimate. Every step up restarts a shorter version of the same climb, so someone titrating from 2.5 to 15 mg is not at their final exposure until roughly a month after the final increase, which can be five or six months after the first injection. Turn the ladder off and set the target directly to see the difference between the two stories.</p>
+    <p>Skipping one injection carves a dip that refills over about two weeks rather than resetting anything, which is the single most useful intuition the model offers. <strong>It is also where the model is weakest</strong>: it says nothing about tolerability, which is what actually governs escalation and what actually happens when someone restarts after a gap. A pharmacokinetic curve is not a clinical plan.</p>
+    <p>Three further limits worth holding onto. The vertical axis is amount in the body, not plasma concentration, so it cannot be compared against any assay result. The single compartment smooths a distribution phase that the published two-compartment model resolves, which mostly affects the first day or two after each injection. And there is no variability: real exposure at a fixed dose spans a wide range across people, with body weight the dominant driver, so the height of this curve is the least trustworthy thing on the screen. The <em>shape</em> is what survives.</p>
+  </div>
+
+  <section class="sources">
+    <h2>Sources</h2>
+    <ul>
+      <li>MOUNJARO (tirzepatide) injection, US Prescribing Information, Eli Lilly and Company. Sections 2.1 and 12.3. <a href="https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=d2d7da5d-ad07-4228-955f-cf7e355c8cc0">DailyMed</a> <em>- half-life, bioavailability, t-max, clearance, volume, and the escalation ladder all come from here.</em></li>
+      <li>ZEPBOUND (tirzepatide) injection, US Prescribing Information, Eli Lilly and Company. <a href="https://www.accessdata.fda.gov/drugsatfda_docs/label/2026/217806s042lbl.pdf">accessdata.fda.gov</a> <em>- same molecule under the obesity indication, same pharmacokinetics section.</em></li>
+      <li>Schneck K, et al. 2024. Population pharmacokinetics of the GIP/GLP receptor agonist tirzepatide. CPT: Pharmacometrics and Systems Pharmacology. <a href="https://doi.org/10.1002/psp4.13099">doi:10.1002/psp4.13099</a> <em>- the two-compartment population model this page deliberately simplifies, and the source for body weight as the dominant covariate.</em></li>
+      <li>Urva S, et al. 2021. Effects of Renal Impairment on the Pharmacokinetics of the Dual GIP and GLP-1 Receptor Agonist Tirzepatide. Clinical Pharmacokinetics. <a href="https://doi.org/10.1007/s40262-021-01012-2">doi:10.1007/s40262-021-01012-2</a> <em>- why the model carries no renal term.</em></li>
+      <li>European Medicines Agency, Mounjaro European Public Assessment Report. <a href="https://www.ema.europa.eu/en/medicines/human/EPAR/mounjaro">ema.europa.eu</a> <em>- a second regulatory reading of the same pharmacokinetic package.</em></li>
+      <li>Gibaldi M, Perrier D. 1982. Pharmacokinetics, 2nd edition. Marcel Dekker. <em>- the one-compartment first-order absorption equation and the superposition principle used to stack repeated doses.</em></li>
+    </ul>
+    <p class="note">Scope: this page models the shape of tirzepatide accumulation under repeated subcutaneous dosing. The pharmacokinetic constants are label figures and are attributable to the sources above. Everything the curve displays is a computed consequence of those constants under a deliberately simplified one-compartment model applied to a single population-average person, not a measurement, not a prediction for any individual, and not comparable to a laboratory result. Nothing here is medical advice.</p>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+/* ---------------- constants ---------------- */
+var F_BIO = 0.80;          /* absolute bioavailability, Mounjaro PI 12.3 */
+var DAY_MS = 86400000;
+var STEP_MG = 2.5;         /* escalation increment, PI 2.1 */
+var LADDER_WEEKS = 4;      /* minimum weeks on a dose before increasing, PI 2.1 */
+
+var C = { curve:"#4FD1A5", compare:"#2BD6D6", now:"#F0A93B", miss:"#E0645E",
+          rule:"#1F2630", ruleLit:"#39434F", dim:"#7D8794", ink:"#0B0E13" };
+
+/* ---------------- state ---------------- */
+var S = {
+  startDate: defaultStart(), startTime: "12:00",
+  targetMg: 5, intervalDays: 7, halfLife: 5, tmaxHours: 34,
+  windowDays: 90, compareMg: 10,
+  escalate: true, skipped: new Set(),
+  showDoses: true, showSS: true, showCompare: false
+};
+
+var $ = function (id) { return document.getElementById(id); };
+
+/* Default the first injection to eight weeks back so the page opens mid-course,
+   with the "now" marker somewhere informative rather than sitting on day zero. */
+function defaultStart() {
+  var d = new Date(Date.now() - 56 * DAY_MS), p = function (n) { return String(n).padStart(2, "0"); };
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+
+/* ---------------- model ---------------- */
+
+/* Injection times and amounts. With the ladder on, the dose starts at 2.5 mg
+   and rises by 2.5 mg every LADDER_WEEKS weeks until it reaches the target. */
+function schedule(target, intervalDays, days, escalate, skipped) {
+  var perStep = Math.max(1, Math.round((LADDER_WEEKS * 7) / intervalDays));
+  var out = [];
+  for (var i = 0; ; i++) {
+    var day = i * intervalDays;
+    if (day > days + 1e-9) break;
+    var mg = escalate ? Math.min(target, STEP_MG * (1 + Math.floor(i / perStep))) : target;
+    out.push({ index: i, day: +day.toFixed(3), mg: +mg.toFixed(2), skipped: skipped.has(i) });
+    if (i > 400) break;
+  }
+  return out;
+}
+
+/* t_max = ln(ka/ke)/(ka - ke) is monotonically decreasing in ka, so bisect. */
+function solveKa(ke, tmaxDays) {
+  var tmaxOf = function (ka) { return Math.log(ka / ke) / (ka - ke); };
+  var ceiling = 1 / ke;                       /* t_max as ka approaches ke */
+  if (tmaxDays >= ceiling * 0.999) return ke * 1.001;
+  var lo = ke * 1.0001, hi = ke * 5000, mid;
+  for (var i = 0; i < 100; i++) {
+    mid = (lo + hi) / 2;
+    if (tmaxOf(mid) > tmaxDays) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+function buildSeries(doses, halfLife, tmaxHours, days) {
+  var ke = Math.LN2 / halfLife;
+  var ka = solveKa(ke, tmaxHours / 24);
+  var g = ka / (ka - ke);
+  var active = doses.filter(function (d) { return !d.skipped; });
+  var amountAt = function (t) {
+    var a = 0;
+    for (var i = 0; i < active.length; i++) {
+      var u = t - active[i].day;
+      if (u >= 0) a += F_BIO * active[i].mg * g * (Math.exp(-ke * u) - Math.exp(-ka * u));
+    }
+    return a;
+  };
+  var step = days / 450, pts = [];
+  for (var t = 0; t <= days + 1e-9; t += step) pts.push({ day: t, amt: amountAt(t) });
+  return { ke: ke, ka: ka, pts: pts, doses: doses, amountAt: amountAt };
+}
+
+/* ---------------- dates ---------------- */
+function anchor() {
+  var parts = (S.startTime || "12:00").split(":").map(Number);
+  var d = new Date(S.startDate + "T00:00:00");
+  if (isNaN(d.getTime())) return new Date();
+  d.setHours(parts[0] || 0, parts[1] || 0, 0, 0);
+  return d;
+}
+function dayToDate(d) { return new Date(anchor().getTime() + d * DAY_MS); }
+function fmtDate(dt) { return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+function fmtStamp(dt) {
+  return dt.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+/* ---------------- chart geometry ---------------- */
+function geo() {
+  var narrow = window.innerWidth < 640;
+  return narrow
+    ? { W: 520, H: 430, ML: 62, MR: 12, MT: 14, MB: 44, FS: 15, narrow: true }
+    : { W: 900, H: 380, ML: 62, MR: 18, MT: 18, MB: 34, FS: 11, narrow: false };
+}
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  var p = Math.pow(10, Math.floor(Math.log10(v)));
+  var ms = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  for (var i = 0; i < ms.length; i++) if (ms[i] * p >= v) return ms[i] * p;
+  return 10 * p;
+}
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+var cur = null;   /* cached geometry and series, for the pointer readout */
+
+/* ---------------- render ---------------- */
+function render() {
+  var g = geo();
+  var PW = g.W - g.ML - g.MR, PH = g.H - g.MT - g.MB;
+
+  var doses = schedule(S.targetMg, S.intervalDays, S.windowDays, S.escalate, S.skipped);
+  var main = buildSeries(doses, S.halfLife, S.tmaxHours, S.windowDays);
+  var comp = null;
+  if (S.showCompare) {
+    comp = buildSeries(schedule(S.compareMg, S.intervalDays, S.windowDays, S.escalate, S.skipped),
+                       S.halfLife, S.tmaxHours, S.windowDays);
+  }
+
+  var ssAvg = F_BIO * S.targetMg / (main.ke * S.intervalDays);
+  var compSS = comp ? F_BIO * S.compareMg / (comp.ke * S.intervalDays) : 0;
+
+  var nowDay = (Date.now() - anchor().getTime()) / DAY_MS;
+  var nowIn = nowDay >= 0 && nowDay <= S.windowDays;
+
+  var peak = 0, i;
+  for (i = 0; i < main.pts.length; i++) if (main.pts[i].amt > peak) peak = main.pts[i].amt;
+  var compPeak = 0;
+  if (comp) for (i = 0; i < comp.pts.length; i++) if (comp.pts[i].amt > compPeak) compPeak = comp.pts[i].amt;
+
+  var yMax = niceMax(Math.max(peak, compPeak, ssAvg, compSS) * 1.12);
+  var X = function (d) { return g.ML + (d / S.windowDays) * PW; };
+  var Y = function (a) { return g.MT + PH - (a / yMax) * PH; };
+  cur = { g: g, main: main, comp: comp, X: X, Y: Y, PW: PW, PH: PH };
+
+  /* ---- stats ---- */
+  var nowAmt = nowIn ? main.amountAt(nowDay) : null;
+  $("stNow").innerHTML = nowAmt != null ? nowAmt.toFixed(2) + '<span class="u">mg</span>' : "-";
+  $("stPct").innerHTML = (nowAmt != null && ssAvg > 0)
+    ? Math.round(nowAmt / ssAvg * 100) + '<span class="u">%</span>' : "-";
+  $("stSS").innerHTML = ssAvg.toFixed(2) + '<span class="u">mg</span>';
+  $("stPeak").innerHTML = peak.toFixed(2) + '<span class="u">mg</span>';
+  var tssLo = Math.round(4 * S.halfLife), tssHi = Math.round(5 * S.halfLife);
+  $("stTss").innerHTML = tssLo + " to " + tssHi + '<span class="u">days</span>';
+
+  /* ---- legend ---- */
+  var lg = "";
+  lg += '<span class="it" style="color:' + C.curve + '"><span class="sw-h" style="background:' + C.curve + '"></span>'
+      + (S.escalate ? "ladder to " : "") + S.targetMg + " mg every " + S.intervalDays + " d</span>";
+  if (comp) lg += '<span class="it" style="color:' + C.compare + '"><span class="sw-d"></span>'
+      + (S.escalate ? "ladder to " : "") + S.compareMg + " mg</span>";
+  if (nowIn) lg += '<span class="it" style="color:' + C.now + '"><span class="sw-v" style="background:' + C.now + '"></span>now, ' + esc(fmtStamp(new Date())) + "</span>";
+  if (S.showDoses) lg += '<span class="it" style="color:' + C.dim + '"><span class="sw-v" style="background:' + C.curve + ';opacity:.45"></span>injections</span>';
+  $("legend").innerHTML = lg;
+
+  /* ---- svg ---- */
+  var s = "";
+  s += '<defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">'
+     + '<stop offset="0%" stop-color="' + C.curve + '" stop-opacity="0.22"/>'
+     + '<stop offset="100%" stop-color="' + C.curve + '" stop-opacity="0.02"/></linearGradient></defs>';
+
+  var yTicks = 5, v, y;
+  for (i = 0; i <= yTicks; i++) {
+    v = yMax * i / yTicks; y = Y(v);
+    s += '<line x1="' + g.ML + '" y1="' + y + '" x2="' + (g.W - g.MR) + '" y2="' + y + '" stroke="' + C.rule + '"/>';
+    s += '<text x="' + (g.ML - 8) + '" y="' + (y + g.FS * 0.36) + '" text-anchor="end" font-size="' + g.FS + '" fill="' + C.dim + '" font-family="IBM Plex Mono, monospace">' + (+v.toFixed(2)) + "</text>";
+  }
+  s += '<text x="' + (g.narrow ? 15 : 16) + '" y="' + (g.MT + PH / 2) + '" font-size="' + g.FS + '" fill="' + C.dim + '" font-family="IBM Plex Mono, monospace" text-anchor="middle" transform="rotate(-90 ' + (g.narrow ? 15 : 16) + ' ' + (g.MT + PH / 2) + ')">mg in the body</text>';
+
+  var stride = g.narrow ? (S.windowDays > 120 ? 60 : 30) : (S.windowDays > 120 ? 28 : 14);
+  for (var d = 0; d <= S.windowDays; d += stride) {
+    s += '<text x="' + X(d).toFixed(1) + '" y="' + (g.H - g.MB / 3) + '" text-anchor="middle" font-size="' + g.FS + '" fill="' + C.dim + '" font-family="IBM Plex Mono, monospace">' + esc(fmtDate(dayToDate(d))) + "</text>";
+  }
+
+  if (S.showDoses) {
+    for (i = 0; i < main.doses.length; i++) {
+      var dd = main.doses[i];
+      var h = dd.skipped ? PH : (PH * 0.10 + PH * 0.10 * (dd.mg / Math.max(S.targetMg, 0.1)));
+      s += '<line x1="' + X(dd.day).toFixed(1) + '" y1="' + (g.MT + PH - h).toFixed(1) + '" x2="' + X(dd.day).toFixed(1) + '" y2="' + (g.MT + PH) + '" stroke="'
+         + (dd.skipped ? C.miss : C.curve) + '" stroke-opacity="' + (dd.skipped ? 0.5 : 0.45) + '"'
+         + (dd.skipped ? ' stroke-dasharray="3 3"' : "") + "/>";
+    }
+  }
+
+  if (S.showSS) {
+    s += '<line x1="' + g.ML + '" y1="' + Y(ssAvg).toFixed(1) + '" x2="' + (g.W - g.MR) + '" y2="' + Y(ssAvg).toFixed(1) + '" stroke="' + C.ruleLit + '" stroke-dasharray="6 4"/>';
+    s += '<text x="' + (g.W - g.MR - 4) + '" y="' + (Y(ssAvg) + g.FS + 4).toFixed(1) + '" text-anchor="end" font-size="' + g.FS + '" fill="' + C.dim + '" font-family="IBM Plex Mono, monospace">steady state at ' + S.targetMg + ' mg</text>';
+  }
+
+  var path = "", area = "M" + X(0).toFixed(1) + " " + Y(0).toFixed(1);
+  for (i = 0; i < main.pts.length; i++) {
+    var seg = (i ? "L" : "M") + X(main.pts[i].day).toFixed(1) + " " + Y(main.pts[i].amt).toFixed(1);
+    path += seg;
+    area += "L" + X(main.pts[i].day).toFixed(1) + " " + Y(main.pts[i].amt).toFixed(1);
+  }
+  area += "L" + X(S.windowDays).toFixed(1) + " " + Y(0).toFixed(1) + "Z";
+  s += '<path d="' + area + '" fill="url(#fill)"/>';
+
+  if (comp) {
+    var cp = "";
+    for (i = 0; i < comp.pts.length; i++) cp += (i ? "L" : "M") + X(comp.pts[i].day).toFixed(1) + " " + Y(comp.pts[i].amt).toFixed(1);
+    s += '<path d="' + cp + '" fill="none" stroke="' + C.compare + '" stroke-width="1.5" stroke-dasharray="5 4"/>';
+  }
+  s += '<path d="' + path + '" fill="none" stroke="' + C.curve + '" stroke-width="2.2" stroke-linejoin="round"/>';
+
+  if (nowIn) s += '<line x1="' + X(nowDay).toFixed(1) + '" y1="' + g.MT + '" x2="' + X(nowDay).toFixed(1) + '" y2="' + (g.MT + PH) + '" stroke="' + C.now + '" stroke-width="2"/>';
+  s += '<line id="xh" x1="0" y1="' + g.MT + '" x2="0" y2="' + (g.MT + PH) + '" stroke="' + C.ruleLit + '" style="display:none"/>';
+
+  var chart = $("chart");
+  chart.setAttribute("viewBox", "0 0 " + g.W + " " + g.H);
+  chart.innerHTML = s;
+
+  /* ---- chips ---- */
+  var ch = "";
+  for (i = 0; i < main.doses.length; i++) {
+    var c = main.doses[i];
+    ch += '<button class="chip' + (c.skipped ? " skip" : "") + '" data-i="' + c.index
+       + '" aria-pressed="' + (c.skipped ? "true" : "false")
+       + '" title="' + esc((c.skipped ? "Skipped: " : "Injection ") + (c.index + 1) + ", " + fmtDate(dayToDate(c.day)) + ", " + c.mg + " mg") + '">'
+       + (c.index + 1) + " · " + esc(fmtDate(dayToDate(c.day))) + ' <span class="mg">' + c.mg + "</span></button>";
+  }
+  $("chips").innerHTML = ch;
+  $("resetLine").innerHTML = S.skipped.size
+    ? S.skipped.size + " injection" + (S.skipped.size > 1 ? "s" : "") + " skipped. <button id=\"resetSkips\">restore all</button>"
+    : "";
+  if ($("resetSkips")) $("resetSkips").addEventListener("click", function () { S.skipped.clear(); render(); });
+
+  /* ---- control readouts ---- */
+  $("doseLabel").textContent = S.escalate ? "Target dose" : "Dose per injection";
+  $("vDose").textContent = S.targetMg.toFixed(1) + " mg";
+  $("vInt").textContent = S.intervalDays + " days";
+  $("vHl").textContent = S.halfLife.toFixed(2) + " days";
+  $("vTmax").textContent = S.tmaxHours + " h";
+  $("vComp").textContent = S.compareMg.toFixed(1) + " mg";
+
+  /* ---- live formula ---- */
+  var firstAtTarget = null;
+  for (i = 0; i < main.doses.length; i++) {
+    if (main.doses[i].mg >= S.targetMg) { firstAtTarget = main.doses[i]; break; }
+  }
+  $("formula").innerHTML =
+    'one-compartment model, first-order absorption and elimination\n\n'
+  + '  k_e  = ln2 / t_half                          <b>' + main.ke.toFixed(4) + ' /day</b>   <i>t_half = ' + S.halfLife.toFixed(2) + ' d</i>\n'
+  + '  t_max(k_a) = ln(k_a / k_e) / (k_a - k_e)     <b>k_a = ' + main.ka.toFixed(3) + ' /day</b>   <i>solved for t_max = ' + S.tmaxHours + ' h</i>\n'
+  + '  A(t) = sum over injections i already given of\n'
+  + '           F * D_i * k_a/(k_a - k_e) * ( exp(-k_e*u) - exp(-k_a*u) ),   u = t - t_i\n'
+  + '                                               <i>F = ' + F_BIO.toFixed(2) + ', ' + main.doses.filter(function (x) { return !x.skipped; }).length + ' injections in window</i>\n'
+  + '  A_ss = F * D / (k_e * interval)              <b>' + ssAvg.toFixed(2) + ' mg</b>   <i>D = ' + S.targetMg.toFixed(1) + ' mg, interval = ' + S.intervalDays + ' d</i>\n'
+  + '  t_ss ~ 4 to 5 half-lives                     <b>' + tssLo + ' to ' + tssHi + ' days</b>'
+  + (S.escalate && firstAtTarget
+      ? '   <i>from injection ' + (firstAtTarget.index + 1) + ', the first at ' + S.targetMg.toFixed(1) + ' mg</i>'
+      : '   <i>from the first injection</i>');
+}
+
+/* ---------------- pointer readout ---------------- */
+var chartEl = $("chart"), tipEl = $("tip");
+
+function readout(clientX, clientY) {
+  if (!cur) return;
+  var g = cur.g;
+  var r = chartEl.getBoundingClientRect();
+  var px = (clientX - r.left) * (g.W / r.width);
+  var xh = chartEl.querySelector("#xh");
+  if (px < g.ML || px > g.W - g.MR) { hideReadout(); return; }
+  var day = Math.max(0, Math.min(S.windowDays, (px - g.ML) / cur.PW * S.windowDays));
+  var a = cur.main.amountAt(day);
+  var ca = cur.comp ? cur.comp.amountAt(day) : null;
+  if (xh) { xh.setAttribute("x1", cur.X(day)); xh.setAttribute("x2", cur.X(day)); xh.style.display = ""; }
+  tipEl.innerHTML = '<div class="d">' + esc(fmtStamp(dayToDate(day))) + "</div>"
+    + '<div style="color:' + C.curve + '">' + a.toFixed(2) + " mg</div>"
+    + (ca != null ? '<div style="color:' + C.compare + '">' + ca.toFixed(2) + " mg compared</div>" : "");
+  tipEl.style.display = "block";
+  var card = chartEl.parentElement.getBoundingClientRect();
+  var tx = clientX - card.left + 14;
+  if (tx + tipEl.offsetWidth > card.width - 8) tx = clientX - card.left - tipEl.offsetWidth - 14;
+  tipEl.style.left = Math.max(8, tx) + "px";
+  tipEl.style.top = Math.max(8, clientY - card.top - 10) + "px";
+}
+function hideReadout() {
+  tipEl.style.display = "none";
+  var xh = chartEl.querySelector("#xh");
+  if (xh) xh.style.display = "none";
+}
+
+chartEl.addEventListener("mousemove", function (e) { readout(e.clientX, e.clientY); });
+chartEl.addEventListener("mouseleave", hideReadout);
+chartEl.addEventListener("touchstart", function (e) { readout(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+chartEl.addEventListener("touchmove", function (e) { readout(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+chartEl.addEventListener("touchend", hideReadout);
+
+/* ---------------- wiring ---------------- */
+$("startDate").value = S.startDate;
+
+function bindRange(id, key, parse) {
+  $(id).addEventListener("input", function (e) { S[key] = (parse || parseFloat)(e.target.value); render(); });
+}
+bindRange("targetMg", "targetMg");
+bindRange("intervalDays", "intervalDays");
+bindRange("halfLife", "halfLife");
+bindRange("tmaxHours", "tmaxHours");
+bindRange("compareMg", "compareMg");
+$("startDate").addEventListener("input", function (e) { S.startDate = e.target.value || S.startDate; render(); });
+$("startTime").addEventListener("input", function (e) { S.startTime = e.target.value || "12:00"; render(); });
+
+function setWindow(days, onId, offId) {
+  S.windowDays = days;
+  $(onId).classList.add("on"); $(onId).setAttribute("aria-pressed", "true");
+  $(offId).classList.remove("on"); $(offId).setAttribute("aria-pressed", "false");
+  render();
+}
+$("w90").addEventListener("click", function () { setWindow(90, "w90", "w180"); });
+$("w180").addEventListener("click", function () { setWindow(180, "w180", "w90"); });
+
+$("chips").addEventListener("click", function (e) {
+  var b = e.target.closest(".chip");
+  if (!b) return;
+  var i = parseInt(b.dataset.i, 10);
+  if (S.skipped.has(i)) S.skipped.delete(i); else S.skipped.add(i);
+  render();
+});
+
+function wireToggle(id, key, after) {
+  $(id).addEventListener("click", function () {
+    S[key] = !S[key];
+    $(id).classList.toggle("on", S[key]);
+    $(id).setAttribute("aria-pressed", String(S[key]));
+    if (after) after();
+    render();
+  });
+}
+wireToggle("tEsc", "escalate");
+wireToggle("tDoses", "showDoses");
+wireToggle("tSS", "showSS");
+wireToggle("tComp", "showCompare", function () {
+  $("compRow").style.display = S.showCompare ? "block" : "none";
+});
+
+var resizeTimer = null;
+window.addEventListener("resize", function () {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function () { hideReadout(); render(); }, 160);
+});
+
+render();
+
+/* Keep the "now" marker honest if the page stays open, but never redraw out
+   from under someone who is on a control. */
+setInterval(function () {
+  var a = document.activeElement;
+  if (a && a !== document.body && a.closest && a.closest(".wrap")) return;
+  render();
+}, 60000);
+</script>
+</body>
+</html>
