@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ELMo · how NLP learned to pretrain</title>
+<meta name="description" content="A close reading of Peters et al. 2018, Deep contextualized word representations: mix the biLM's three layers by hand, see which linguistic level each one carries, and check every headline number against the table it came from.">
+<meta property="og:title" content="ELMo · how NLP learned to pretrain">
+<meta property="og:description" content="Deep contextualized word representations, read closely: what the six benchmark gains actually were, what the layer probes do and do not establish, and which of the paper's habits still pay off.">
+<meta property="og:type" content="article">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+:root{
+  --ink:#0B0E13; --panel:#10141B; --rule:#1F2630; --rule-lit:#39434F;
+  --text:#E6E9ED; --dim:#7D8794; --ai:#B98CFF;
+  --fwd:#F0A93B; --bwd:#5AA9E6;
+  --l0:#7D8794; --l1:#6FD3C4; --l2:#B98CFF;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+}
+html, body { margin:0; padding:0; background:var(--ink); }
+body{
+  color:var(--text); font-family:var(--sans); font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{ max-width:1000px; margin:0 auto; padding:0 28px 72px; }
+@media (max-width:620px){ .wrap{ padding:0 18px 56px; } }
+
+/* ---------- nav ---------- */
+.cv-nav{
+  font:11px/1 var(--mono);
+  letter-spacing:.14em; text-transform:uppercase;
+  display:flex; align-items:center; gap:10px;
+  padding:14px 28px;
+  background:#0B0E13;
+  border-bottom:1px solid var(--rule);
+  position:relative; z-index:9999;
+}
+.cv-nav a{ color:var(--dim); text-decoration:none; transition:color .14s ease }
+.cv-nav a:hover,.cv-nav a:focus-visible{ color:var(--text) }
+.cv-nav span{ color:var(--rule-lit) }
+@media (max-width:620px){ .cv-nav{ padding:12px 18px } }
+
+/* ---------- scope strip ---------- */
+.cv-scope{
+  max-width:1000px; margin:0 auto; padding:13px 28px;
+  font:10px/1.7 var(--mono); letter-spacing:.14em; text-transform:uppercase;
+  color:var(--dim); border-bottom:1px solid var(--rule);
+}
+.cv-scope b{ color:var(--dim); font-weight:500 }
+@media (max-width:620px){ .cv-scope{ padding:12px 18px } }
+
+/* ---------- header ---------- */
+header{ padding-top:42px; }
+.eyebrow{
+  font:10.5px/1.6 var(--mono); letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ai); margin-bottom:14px;
+}
+h1{
+  font-family:var(--cond); font-weight:700;
+  font-size:clamp(26px,4.6vw,44px); line-height:1.05; letter-spacing:-.025em;
+  margin:0 0 16px; max-width:22ch;
+}
+h1 em{ font-style:normal; color:var(--dim) }
+.lede{ color:var(--dim); max-width:64ch; font-size:15.5px; margin:0 0 14px }
+.lede strong{ color:var(--text); font-weight:500 }
+.cite{
+  font:12.4px/1.7 var(--mono); color:var(--dim); max-width:64ch;
+  margin:0 0 26px; padding-left:12px; border-left:2px solid var(--ai);
+}
+.cite a{ color:var(--ai); text-decoration:none; border-bottom:1px solid var(--rule-lit) }
+.cite a:hover,.cite a:focus-visible{ border-bottom-color:var(--ai) }
+
+/* ---------- token streams ---------- */
+.streams{ border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); margin:22px 0 8px }
+.stream{ overflow:hidden; white-space:nowrap; padding:4px 0 }
+.stream-inner{ display:inline-block }
+.stream-r .stream-inner{ animation:flowR 34s linear infinite }
+.stream-l .stream-inner{ animation:flowL 34s linear infinite }
+@keyframes flowR{ from{transform:translateX(0)} to{transform:translateX(-50%)} }
+@keyframes flowL{ from{transform:translateX(-50%)} to{transform:translateX(0)} }
+.tok{ font:12px/1 var(--mono); margin-right:14px }
+.stream-r .tok{ color:var(--fwd) } .stream-l .tok{ color:var(--bwd) }
+.tok b{ padding:2px 5px; border-radius:2px; font-weight:600 }
+.stream-r .tok b{ background:rgba(240,169,59,.14) }
+.stream-l .tok b{ background:rgba(90,169,230,.14) }
+.arr{ opacity:.4 }
+.legend{ font:11px/1.7 var(--mono); color:var(--dim); margin:0 0 4px }
+
+/* ---------- tier legend ---------- */
+.tiers{ display:flex; flex-wrap:wrap; gap:8px 16px; margin:22px 0 0; padding:14px 16px;
+  background:var(--panel); border:1px solid var(--rule); border-radius:3px }
+.tiers p{ margin:0; font:11.6px/1.6 var(--mono); color:var(--dim); flex:1 1 240px }
+.tier{
+  display:inline-block; font:10px/1.5 var(--mono); letter-spacing:.1em;
+  text-transform:uppercase; padding:2px 7px; border-radius:2px;
+  border:1px solid var(--rule-lit); color:var(--dim); white-space:nowrap;
+}
+.tier.reported{ border-color:#B98CFF; color:#B98CFF }
+.tier.analysis{ border-color:#6FD3C4; color:#6FD3C4 }
+.tier.added{ border-color:#F0A93B; color:#F0A93B }
+
+/* ---------- tabs ---------- */
+.tabs{ display:flex; gap:6px; flex-wrap:wrap; margin:30px 0 6px }
+.tabbtn{
+  font:12px/1 var(--mono); letter-spacing:.06em;
+  border:1px solid var(--rule); background:var(--panel); color:var(--dim);
+  border-radius:2px; padding:9px 13px; cursor:pointer;
+}
+.tabbtn:hover{ color:var(--text); border-color:var(--rule-lit) }
+.tabbtn.on{ background:var(--ai); border-color:var(--ai); color:#0B0E13; font-weight:600 }
+:focus-visible{ outline:2px solid var(--ai); outline-offset:2px }
+
+.panel{ padding-top:12px; border-top:1px solid var(--rule); margin-top:12px }
+.panel + .panel{ margin-top:34px }
+body.js .panel{ display:none; margin-top:12px }
+body.js .panel.on{ display:block }
+
+h2.sec{
+  font-family:var(--cond); font-weight:700; font-size:19px; letter-spacing:-.01em;
+  color:var(--text); margin:20px 0 10px;
+}
+h3{ font-family:var(--cond); font-weight:600; font-size:15px; margin:0 0 8px; letter-spacing:.005em }
+.panel > p.lede{ margin-bottom:18px }
+
+/* ---------- generic blocks ---------- */
+.card{ background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:16px 18px }
+.label{ font:10px/1.6 var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:10px }
+.note{
+  margin:18px 0 0; padding:14px 16px; border-left:2px solid var(--ai);
+  background:var(--panel); border-radius:0 3px 3px 0;
+}
+.note .label{ color:var(--ai) }
+.note p{ margin:0; font-size:14.2px; color:var(--dim) }
+.note p + p{ margin-top:10px }
+.note strong{ color:var(--text); font-weight:500 }
+.limit{ border-left-color:var(--rule-lit) }
+.limit .label{ color:var(--dim) }
+code, .m{ font-family:var(--mono); font-size:.9em; color:var(--text) }
+.twocol{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:12px }
+
+/* ---------- tab 1 ---------- */
+.pills{ display:flex; gap:6px; flex-wrap:wrap; margin:12px 0 14px }
+.pill{
+  font:11.5px/1 var(--mono); border:1px solid var(--rule); background:var(--ink);
+  color:var(--dim); border-radius:2px; padding:8px 12px; cursor:pointer;
+}
+.pill:hover{ color:var(--text); border-color:var(--rule-lit) }
+.pill.on{ border-color:var(--ai); color:var(--ai) }
+.sentbox + .sentbox{ margin-top:16px }
+body.js .sentbox{ display:none }
+body.js .sentbox.on{ display:block }
+.sent{ font-size:15px; margin:0 0 12px; color:var(--text) }
+mark.play{ background:rgba(185,140,255,.16); color:var(--ai); font-weight:600; padding:0 4px; border-radius:2px }
+.gtoken{
+  font:11.5px/1 var(--mono); background:var(--ink); color:var(--dim);
+  border:1px solid var(--rule); border-radius:2px; padding:4px 8px;
+  display:inline-block; margin:0 5px 5px 0;
+}
+.small{ font-size:13px; color:var(--dim); margin:10px 0 0 }
+.nn{ font-size:13.6px; color:var(--dim); margin:0 }
+.nn q{ color:var(--text); font-style:italic }
+
+/* ---------- tab 2 ---------- */
+.arch-grid{ display:grid; grid-template-columns:minmax(230px,320px) 1fr; gap:14px; margin-top:14px; align-items:start }
+@media (max-width:720px){ .arch-grid{ grid-template-columns:1fr } }
+.archbtn{
+  display:block; width:100%; text-align:left; cursor:pointer; font-family:inherit;
+  background:transparent; border:1px solid var(--rule); border-left:3px solid var(--rule);
+  border-radius:2px; padding:11px 13px; margin-bottom:7px; color:var(--dim);
+}
+.archbtn:hover{ border-top-color:var(--rule-lit); border-right-color:var(--rule-lit); border-bottom-color:var(--rule-lit) }
+.archbtn.on{ background:var(--panel); color:var(--text); border-top-color:var(--rule-lit); border-right-color:var(--rule-lit); border-bottom-color:var(--rule-lit) }
+.archbtn .t{ font:13px/1.3 var(--sans); font-weight:500 }
+.archbtn .s{ font:11px/1.5 var(--mono); margin-top:4px }
+.archbtn .dirs{ font:10.5px/1.5 var(--mono); margin-top:3px; color:var(--dim) }
+.arch-detail p{ font-size:14.6px; color:var(--dim); margin:0 0 12px }
+.arch-detail ul{ margin:0; padding-left:17px }
+.arch-detail li{ font:12.4px/1.9 var(--mono); color:var(--dim) }
+body.js .arch-detail{ display:none }
+body.js .arch-detail.on{ display:block }
+.arch-detail + .arch-detail{ margin-top:12px }
+
+/* ---------- tab 3 ---------- */
+.eq{
+  font:14px/1.7 var(--mono); background:var(--panel); border:1px solid var(--rule);
+  color:var(--text); border-radius:3px; padding:14px 16px; margin:0 0 14px; overflow-x:auto;
+}
+.eq .c{ color:var(--dim) }
+.mixer-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:14px }
+.slider-row{ margin-bottom:16px }
+.slider-head{ display:flex; justify-content:space-between; align-items:baseline; gap:10px }
+.slider-head .nm{ font-size:13px; font-weight:500 }
+.slider-head .val{ font:12px/1 var(--mono); color:var(--dim) }
+.slider-tag{ font:10.5px/1.6 var(--mono); color:var(--dim); letter-spacing:.08em; text-transform:uppercase }
+input[type=range]{ width:100%; accent-color:var(--ai); margin:6px 0 2px }
+.chips{ display:flex; gap:6px; flex-wrap:wrap; margin-top:14px }
+.chip{
+  font:11px/1 var(--mono); border:1px solid var(--rule); background:var(--ink);
+  color:var(--dim); border-radius:2px; padding:7px 10px; cursor:pointer;
+}
+.chip:hover{ color:var(--text); border-color:var(--rule-lit) }
+.mixbar{ height:30px; border:1px solid var(--rule); border-radius:2px; overflow:hidden; display:flex; min-width:80px; margin:6px 0 8px }
+.mix-caption{ font:11px/1.6 var(--mono); color:var(--dim); margin:0 0 14px }
+#mix-verdict{ font-size:14.2px; color:var(--text); margin:0 }
+#mix-note{ font-size:13.4px; color:var(--dim); margin:12px 0 0; padding-top:12px; border-top:1px solid var(--rule) }
+.nojs-only{ font-size:13.6px; color:var(--dim); margin:12px 0 0 }
+body.js .nojs-only{ display:none }
+
+/* ---------- tab 4 ---------- */
+.res{ border-top:1px solid var(--rule); padding:14px 0 }
+.res:last-of-type{ border-bottom:1px solid var(--rule) }
+.res-head{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap }
+.res-task{ font-size:14.5px; font-weight:600 }
+.res-desc{ font-size:12.6px; color:var(--dim); margin-left:8px }
+.res-badge{ font:11px/1.6 var(--mono); color:var(--ai); border:1px solid var(--rule-lit); border-radius:2px; padding:1px 8px }
+.track{ position:relative; height:9px; background:#151A22; border:1px solid var(--rule); border-radius:2px; overflow:hidden; margin-top:7px }
+.track .fill{ position:absolute; top:0; bottom:0; left:0 }
+.res-labels{ display:flex; justify-content:space-between; gap:10px; font:11px/1.6 var(--mono); color:var(--dim); margin-top:5px; flex-wrap:wrap }
+.res-labels .hi{ color:var(--ai) }
+details{ margin-top:8px }
+summary{ font:11px/1.6 var(--mono); color:var(--dim); cursor:pointer; letter-spacing:.06em }
+summary:hover{ color:var(--text) }
+details p{ font-size:13.4px; color:var(--dim); margin:8px 0 0; max-width:70ch }
+
+/* ---------- tab 5 ---------- */
+.plays{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; margin-top:14px }
+.play-num{ font:12px/1 var(--mono); color:var(--ai); margin-right:10px }
+.play-t{ font-size:14.4px; font-weight:600 }
+.play-d{ font-size:13.6px; color:var(--dim); margin:9px 0 0 }
+.timeline{ margin-top:16px }
+.tl-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-top:12px }
+.tl-y{ font:10.5px/1.6 var(--mono); letter-spacing:.14em; color:var(--fwd) }
+.tl-t{ font-family:var(--cond); font-weight:600; font-size:15px; margin:3px 0 }
+.tl-d{ font-size:12.8px; color:var(--dim) }
+
+/* ---------- sources ---------- */
+.sources{ margin-top:44px; padding-top:20px; border-top:1px solid var(--rule) }
+.sources h2{ font-family:var(--cond); font-weight:700; font-size:17px; margin:0 0 14px }
+.sources ul{ margin:0; padding-left:17px }
+.sources li{ font-size:13.6px; color:var(--dim); margin-bottom:11px; max-width:78ch }
+.sources a{ color:var(--ai); text-decoration:none; border-bottom:1px solid var(--rule) }
+.sources a:hover,.sources a:focus-visible{ border-bottom-color:var(--ai) }
+.sources em{ color:var(--dim); font-style:italic }
+.sources .scopenote{ font:11.6px/1.8 var(--mono); color:var(--dim); max-width:78ch; margin:22px 0 0 }
+
+@media (prefers-reduced-motion:reduce){
+  *{ transition:none !important; animation:none !important }
+}
+@media (max-width:420px){
+  .tabbtn{ padding:8px 10px; font-size:11px }
+  .res-labels{ font-size:10.5px }
+}
+</style>
+</head>
+<body>
+
+<nav class="cv-nav">
+  <a href="/">Cristi Vlad</a>
+  <span>/</span>
+  <a href="/#ai">AI</a>
+</nav>
+
+<p class="cv-scope">Source reading <b>·</b> arXiv:1802.05365 <b>·</b> Peters et al. 2018 <b>·</b> one paper read closely, with every number traced to the table it came from</p>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Deep contextualized word representations · NAACL 2018 best paper</div>
+    <h1>ELMo, and the year a word stopped having <em>one meaning.</em></h1>
+    <p class="lede">This is a <strong>source reading</strong>, not a survey of contextual embeddings. One paper is the anchor, and the page's job is to separate what it measured from what people remember it measuring. The claim under test is small and specific: a word's representation should be a function of the whole sentence, produced by a deep bidirectional language model trained on raw text, and every layer of that model should be exposed to the task rather than just the top one.</p>
+    <p class="lede">Six benchmarks, one recipe: take a strong published baseline, concatenate ELMo vectors to its input, change nothing else, retrain. All six improved. What follows is those results, the probes behind the layer story, and the parts of the popular retelling the paper does not support.</p>
+    <p class="cite">Peters M, Neumann M, Iyyer M, Gardner M, Clark C, Lee K, Zettlemoyer L. 2018. Deep contextualized word representations. NAACL-HLT 2018, 2227 to 2237. <a href="https://arxiv.org/abs/1802.05365">arXiv:1802.05365</a> <b>·</b> <a href="https://doi.org/10.18653/v1/N18-1202">doi:10.18653/v1/N18-1202</a></p>
+
+    <div class="streams" aria-hidden="true">
+      <div class="stream stream-r"><div class="stream-inner" id="stream-r"><span class="tok">the <span class="arr">&#8594;</span></span><span class="tok">actors <span class="arr">&#8594;</span></span><span class="tok">gave <span class="arr">&#8594;</span></span><span class="tok">a <span class="arr">&#8594;</span></span><span class="tok">spectacular <span class="arr">&#8594;</span></span><span class="tok"><b>play</b> <span class="arr">&#8594;</span></span><span class="tok">on <span class="arr">&#8594;</span></span><span class="tok">opening <span class="arr">&#8594;</span></span><span class="tok">night <span class="arr">&#8594;</span></span><span class="tok">Ruiz <span class="arr">&#8594;</span></span><span class="tok">made <span class="arr">&#8594;</span></span><span class="tok">a <span class="arr">&#8594;</span></span><span class="tok">spectacular <span class="arr">&#8594;</span></span><span class="tok"><b>play</b> <span class="arr">&#8594;</span></span><span class="tok">on <span class="arr">&#8594;</span></span><span class="tok">the <span class="arr">&#8594;</span></span><span class="tok">grounder <span class="arr">&#8594;</span></span></div></div>
+      <div class="stream stream-l"><div class="stream-inner" id="stream-l"><span class="tok"><span class="arr">&#8592;</span> grounder</span><span class="tok"><span class="arr">&#8592;</span> the</span><span class="tok"><span class="arr">&#8592;</span> on</span><span class="tok"><span class="arr">&#8592;</span> <b>play</b></span><span class="tok"><span class="arr">&#8592;</span> spectacular</span><span class="tok"><span class="arr">&#8592;</span> a</span><span class="tok"><span class="arr">&#8592;</span> made</span><span class="tok"><span class="arr">&#8592;</span> Ruiz</span><span class="tok"><span class="arr">&#8592;</span> night</span><span class="tok"><span class="arr">&#8592;</span> opening</span><span class="tok"><span class="arr">&#8592;</span> on</span><span class="tok"><span class="arr">&#8592;</span> <b>play</b></span><span class="tok"><span class="arr">&#8592;</span> spectacular</span><span class="tok"><span class="arr">&#8592;</span> a</span><span class="tok"><span class="arr">&#8592;</span> gave</span><span class="tok"><span class="arr">&#8592;</span> actors</span><span class="tok"><span class="arr">&#8592;</span> the</span></div></div>
+    </div>
+    <p class="legend"><span style="color:var(--fwd)">forward LM</span> reads left to right <b>·</b> <span style="color:var(--bwd)">backward LM</span> reads right to left <b>·</b> the two are trained separately and joined only at the end</p>
+
+    <div class="tiers">
+      <p><span class="tier reported">Reported</span> a figure from the paper's result tables, on a held-out test set.</p>
+      <p><span class="tier analysis">Analysis</span> from the paper's ablations and probes: development sets, single tasks, narrower evidence.</p>
+      <p><span class="tier added">Added here</span> an illustration or a present-day extrapolation written for this page. Not in the paper.</p>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button class="tabbtn on" data-tab="problem">1 · The problem</button>
+    <button class="tabbtn" data-tab="arch">2 · How it works</button>
+    <button class="tabbtn" data-tab="mixer">3 · The mixer</button>
+    <button class="tabbtn" data-tab="results">4 · The evidence</button>
+    <button class="tabbtn" data-tab="playbook">5 · What still holds</button>
+  </div>
+
+  <!-- ===== TAB 1: THE PROBLEM ===== -->
+  <section class="panel on" id="panel-problem">
+    <h2 class="sec">One word, one vector</h2>
+    <p class="lede">Before this paper the standard move was word2vec or GloVe: every word type gets a single frozen vector, wherever it appears. The paper's Table 4 makes the failure concrete by taking the word <em>play</em>, listing GloVe's nearest neighbours, and then listing the sentences whose biLM representation of <em>play</em> sits closest to each source sentence. The neighbours move when the sentence moves.</p>
+
+    <div class="card">
+      <div class="label">The word "play" <b>·</b> nearest neighbours, Table 4 <span class="tier reported">Reported</span></div>
+      <div class="twocol">
+        <div>
+          <h3 style="color:var(--l0)">GloVe, same answer every time</h3>
+          <div>
+            <span class="gtoken">playing</span><span class="gtoken">game</span><span class="gtoken">games</span><span class="gtoken">played</span><span class="gtoken">players</span><span class="gtoken">plays</span><span class="gtoken">player</span><span class="gtoken">Play</span><span class="gtoken">football</span><span class="gtoken">multiplayer</span>
+          </div>
+          <p class="small">Sports-flavoured neighbours regardless of context. Theatre, the verb, and every idiom are crushed into one point, and the list is dominated by inflections of the same word rather than by senses.</p>
+        </div>
+        <div>
+          <h3 style="color:var(--ai)">biLM, changes with the sentence</h3>
+          <div class="pills" id="sent-pills">
+            <button class="pill on" data-sent="baseball">Baseball</button>
+            <button class="pill" data-sent="theater">Theatre</button>
+            <button class="pill" data-sent="verb">Verb</button>
+          </div>
+
+          <div class="sentbox on" id="sent-baseball">
+            <p class="sent">"Chico Ruiz made a spectacular <mark class="play">play</mark> on Alusik's grounder"</p>
+            <p class="nn">Nearest source sentence in the biLM's space: <q>Kieffer, the only junior in the group, was commended for his ability to hit in the clutch, as well as his all-round excellent play.</q> The representation lands squarely in the sports sense. <span class="tier reported">Reported</span></p>
+          </div>
+
+          <div class="sentbox" id="sent-theater">
+            <p class="sent">"Olivia De Havilland signed to do a Broadway <mark class="play">play</mark> for Garson"</p>
+            <p class="nn">Nearest source sentence: <q>they were actors who had been handed fat roles in a successful play, and had talent enough to fill the roles competently.</q> Same word, completely different neighbourhood. <span class="tier reported">Reported</span></p>
+          </div>
+
+          <div class="sentbox" id="sent-verb">
+            <p class="sent">"The kids went outside to <mark class="play">play</mark> after lunch."</p>
+            <p class="nn">A verb reading, written for this page to round out the set. The paper's table covers the two noun senses above and does not include this sentence, so treat it as an illustration of the mechanism rather than a result. <span class="tier added">Added here</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="label">Why it mattered in practice</div>
+      <p>Disambiguation used to be something you engineered for. Here it falls out of unsupervised pretraining: using the biLM's top layer with a simple nearest-neighbour rule scores <span class="m">69.0 F1</span> on word sense disambiguation, against <span class="m">65.9</span> for the WordNet first-sense baseline and <span class="m">69.9</span> and <span class="m">70.1</span> for two supervised WSD systems, without the language model ever seeing a sense label. <span class="tier analysis">Analysis</span></p>
+      <p>The general lesson, and the reason this paper is remembered: <strong>raw text at scale teaches things you would otherwise pay annotators for.</strong></p>
+    </div>
+
+    <div class="note limit">
+      <div class="label">What this does not establish</div>
+      <p>The nearest-neighbour table is a qualitative demonstration on one word, chosen to be readable. It shows that the representation moves with context; it does not measure how often it moves correctly. The WSD number does that, on one benchmark, and it lands just below the supervised systems rather than above them. Two senses of one word is an illustration, not an evaluation, and the paper presents it as such.</p>
+    </div>
+  </section>
+
+  <!-- ===== TAB 2: HOW IT WORKS ===== -->
+  <section class="panel" id="panel-arch">
+    <h2 class="sec">Two language models reading in opposite directions</h2>
+    <p class="lede">A forward LM predicts each token from everything to its left, a backward LM from everything to its right. Two layers of each, plus a context-free token layer underneath, means every token comes out with three vectors of 1024 dimensions. Select a block for what it does and its specifications.</p>
+
+    <div class="arch-grid">
+      <div id="arch-list">
+        <button class="archbtn on" data-arch="mix" style="border-left-color:#B98CFF">
+          <div class="t">ELMo scalar mix, task side</div>
+          <div class="s" style="color:#B98CFF">gamma times the weighted sum</div>
+        </button>
+        <button class="archbtn" data-arch="l2" style="border-left-color:#B98CFF">
+          <div class="t">biLSTM layer 2</div>
+          <div class="s" style="color:#B98CFF">512d forward + 512d backward = 1024d</div>
+          <div class="dirs"><span style="color:var(--fwd)">forward</span> <b>·</b> <span style="color:var(--bwd)">backward</span></div>
+        </button>
+        <button class="archbtn" data-arch="l1" style="border-left-color:#6FD3C4">
+          <div class="t">biLSTM layer 1</div>
+          <div class="s" style="color:#6FD3C4">512d forward + 512d backward = 1024d</div>
+          <div class="dirs"><span style="color:var(--fwd)">forward</span> <b>·</b> <span style="color:var(--bwd)">backward</span></div>
+        </button>
+        <button class="archbtn" data-arch="l0" style="border-left-color:#7D8794">
+          <div class="t">Character CNN token layer</div>
+          <div class="s" style="color:#7D8794">context independent, 512d duplicated</div>
+        </button>
+        <button class="archbtn" data-arch="train" style="border-left-color:#F0A93B">
+          <div class="t">Pretraining recipe</div>
+          <div class="s" style="color:#F0A93B">1B Word Benchmark, 10 epochs</div>
+        </button>
+      </div>
+
+      <div>
+        <div class="card arch-detail on" id="arch-mix">
+          <div class="label" style="color:#B98CFF">ELMo scalar mix, task side</div>
+          <p>The only trained transfer machinery in the whole method: a softmax over three scalar weights, one per layer, plus a global scale. The biLM itself stays frozen. The task model learns which layers it wants, which is four parameters standing between a frozen language model and a state of the art result.</p>
+          <ul>
+            <li>Learned per task, not per token</li>
+            <li>The scale is called out as practically important for optimization</li>
+            <li>Optional L2 penalty on the weights, strength lambda</li>
+            <li>Dropout applied to the mixed vector</li>
+          </ul>
+        </div>
+
+        <div class="card arch-detail" id="arch-l2">
+          <div class="label" style="color:#B98CFF">biLSTM layer 2</div>
+          <p>The top recurrent layer. In the paper's probes this layer is the better one for meaning: word sense disambiguation works from here at 69.0 F1 against 67.4 from layer 1. Higher layers see further and abstract more.</p>
+          <ul>
+            <li>4096 LSTM units projected to 512, each direction</li>
+            <li>Residual connection from layer 1</li>
+            <li>Feeds the softmax during LM pretraining</li>
+          </ul>
+        </div>
+
+        <div class="card arch-detail" id="arch-l1">
+          <div class="label" style="color:#6FD3C4">biLSTM layer 1</div>
+          <p>The first recurrent layer, and the syntax specialist in the same set of probes: its features alone tag parts of speech at 97.3 percent accuracy against 96.8 from layer 2, close to the dedicated tagger the paper compares against at 97.78. Different depths carry different linguistics, a finding that outlived ELMo itself.</p>
+          <ul>
+            <li>4096 LSTM units projected to 512, each direction</li>
+            <li>Two directions trained jointly in one objective</li>
+            <li>Token embeddings and softmax weights shared across directions</li>
+          </ul>
+        </div>
+
+        <div class="card arch-detail" id="arch-l0">
+          <div class="label" style="color:#7D8794">Character CNN token layer</div>
+          <p>Tokens are built from characters: 2048 character n-gram convolutional filters, two highway layers, a linear projection to 512. No fixed vocabulary, so misspellings, rare words and morphology are handled without an unknown-word token. This is layer 0 of the mix, and it is the only layer that does not depend on the sentence.</p>
+          <ul>
+            <li>2048 character n-gram CNN filters</li>
+            <li>2 highway layers, then a linear projection to 512</li>
+            <li>No out of vocabulary tokens, ever</li>
+          </ul>
+        </div>
+
+        <div class="card arch-detail" id="arch-train">
+          <div class="label" style="color:#F0A93B">Pretraining recipe</div>
+          <p>Jointly maximize the forward and backward log likelihood on roughly one billion words of raw news text. After ten epochs the average of the forward and backward perplexities is 39.7. Train once, reuse everywhere, and if the target domain differs, fine-tune the language model on unlabelled in-domain text first: the paper reports that this lowers perplexity and lifts downstream scores.</p>
+          <ul>
+            <li>Objective: sum of forward and backward token log likelihoods</li>
+            <li>Frozen at transfer time, no gradients from the task</li>
+            <li>Domain adaptation of the LM needs no labels</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="label">The design choice that carried the paper</div>
+      <p>Earlier transfer work, TagLM and CoVe, exposed only the <em>top</em> layer of a pretrained network. ELMo's argument is that the internals are the asset. On SQuAD development data, using the top layer alone scores 84.7 F1 and learning a mix over all three layers scores 85.2, so <strong>the whole all-layers idea is worth about half a point</strong> over a strong top-layer transfer, on top of the 80.8 baseline. SNLI moves 89.1 to 89.5 and SRL 84.1 to 84.8 in the same comparison. <span class="tier analysis">Analysis</span></p>
+      <p>Small in isolation, and still the first ablation worth running whenever you ship pretrained features, because it costs four parameters.</p>
+    </div>
+
+    <div class="note limit">
+      <div class="label">The part most often misremembered</div>
+      <p>ELMo is not deeply bidirectional. The forward and backward language models are separate stacks with no connection between them at any layer; each direction is a standard unidirectional LM, and the two are concatenated only after the fact. Nothing in the model conditions on both sides at once. That is exactly the limitation BERT named when it introduced masked language modelling eight months later, and the paper itself claims no more than the shallow joining it performs.</p>
+    </div>
+  </section>
+
+  <!-- ===== TAB 3: THE MIXER ===== -->
+  <section class="panel" id="panel-mixer">
+    <h2 class="sec">The whole transfer interface is one equation</h2>
+    <p class="lede">Everything a downstream task learns about the language model is contained in four numbers: three logits that become layer weights, and one global scale. The sliders below move those numbers directly.</p>
+
+    <div class="eq">
+      s = softmax(w<sub>0</sub>, w<sub>1</sub>, w<sub>2</sub>)<br>
+      ELMo<sub>k</sub> = gamma * ( s<sub>0</sub>*h<sub>0,k</sub> + s<sub>1</sub>*h<sub>1,k</sub> + s<sub>2</sub>*h<sub>2,k</sub> )<br>
+      <span class="c">h<sub>0</sub> = character CNN token layer, duplicated across directions</span><br>
+      <span class="c">h<sub>1</sub>, h<sub>2</sub> = the two biLSTM layers, forward and backward concatenated</span><br>
+      <span class="c">loss penalty = lambda * ||w||<sup>2</sup>, which pulls the softmax toward a plain average</span>
+    </div>
+
+    <div class="mixer-grid">
+      <div class="card">
+        <div class="slider-row">
+          <div class="slider-head"><span class="nm" style="color:var(--l0)">Layer 0 · character CNN token</span><span class="val" id="s0v">s0 = 33%</span></div>
+          <input type="range" id="w0" min="-2" max="2" step="0.1" value="0" aria-label="Weight logit for layer 0">
+          <div class="slider-tag">context free</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span class="nm" style="color:var(--l1)">Layer 1 · biLSTM</span><span class="val" id="s1v">s1 = 33%</span></div>
+          <input type="range" id="w1" min="-2" max="2" step="0.1" value="0" aria-label="Weight logit for layer 1">
+          <div class="slider-tag">syntax heavy</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span class="nm" style="color:var(--l2)">Layer 2 · biLSTM</span><span class="val" id="s2v">s2 = 33%</span></div>
+          <input type="range" id="w2" min="-2" max="2" step="0.1" value="0" aria-label="Weight logit for layer 2">
+          <div class="slider-tag">semantics heavy</div>
+        </div>
+        <div class="slider-head"><span class="nm">gamma · global scale</span><span class="val" id="gv">gamma = 1.0</span></div>
+        <input type="range" id="g" min="0.2" max="2" step="0.1" value="1" aria-label="Global scale gamma">
+        <div class="chips" id="preset-chips">
+          <button class="chip" data-w="0,0,0" data-g="1" data-note="Strong L2 collapses the softmax toward a plain average of the three layers. This is the regime the paper's lambda = 1 rows sit in, and on SQuAD dev it costs about 0.2 F1 against the lightly regularized mix.">Uniform, heavy lambda</button>
+          <button class="chip" data-w="-1.2,1.6,-0.8" data-g="1" data-note="Illustrative weights, not the paper's. What they encode is real: probing layer 1 alone gives 97.3 percent POS accuracy against 96.8 from layer 2, so a syntax task has reason to want the lower layer.">Syntax leaning</button>
+          <button class="chip" data-w="-1.4,-0.2,1.6" data-g="1" data-note="Illustrative weights again. The result behind them: the top layer reaches 69.0 F1 on word sense disambiguation against 67.4 from layer 1, so meaning concentrates higher in the stack.">Semantics leaning</button>
+          <button class="chip" data-w="0.3,0.8,-0.4" data-g="0.7" data-note="A hand-drawn stand-in for the shape of Figure 2, where task models applied at the input tend to favour the first biLSTM layer, most sharply for coreference and SQuAD. The figure is a visualization without printed values, so these numbers are invented to match its shape and nothing more.">Input-layer shape</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">Your mix</div>
+        <div class="mixbar" id="mixbar" role="img" aria-label="Mixed vector: 33 percent layer 0, 33 percent layer 1, 33 percent layer 2, scale 1.0">
+          <div id="seg0" style="background:var(--l0); width:33.3%"></div>
+          <div id="seg1" style="background:var(--l1); width:33.3%"></div>
+          <div id="seg2" style="background:var(--l2); width:33.4%"></div>
+        </div>
+        <p class="mix-caption">bar width tracks gamma <b>·</b> segments track s0, s1, s2 <b>·</b> the result is concatenated onto the task model's own embeddings</p>
+        <p id="mix-verdict">A near-uniform mix, which is where heavy regularization puts you. Safe, and it leaves task-specific signal on the table.</p>
+        <p id="mix-note" style="display:none"></p>
+        <p class="nojs-only">With JavaScript off the sliders do not move, but the equation above is the whole method: three softmaxed weights and a scale, learned by the task, applied to a frozen language model. The presets described in the buttons opposite carry their evidence in their own text.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="label">Three knobs the paper actually validates</div>
+      <p><strong>One.</strong> Learn the mix rather than hardcoding the top layer: 84.7 to 85.2 F1 on SQuAD dev. <span class="tier analysis">Analysis</span></p>
+      <p><strong>Two.</strong> The scale is not cosmetic. The biLM's activation statistics differ from the task model's, and the paper calls the scale of practical importance for optimization. The modern equivalent is layer-normalizing each layer before mixing. <span class="tier analysis">Analysis</span></p>
+      <p><strong>Three.</strong> The L2 strength interpolates between a plain average and a fully task-tuned mix. The paper's own comparison of lambda = 1 against lambda = 0.001 is 85.0 against 85.2 on SQuAD dev, 89.3 against 89.5 on SNLI, 84.6 against 84.8 on SRL: real, consistent, and small. <span class="tier analysis">Analysis</span></p>
+    </div>
+
+    <div class="note limit">
+      <div class="label">What the sliders cannot show</div>
+      <p>The weights above are the interface, not the representation. Moving them changes how three fixed vectors are averaged; it does not tell you what is in those vectors, and the verdict text is a reading of the paper's probes rather than a computation. Nothing here is running a language model. The layer characterisations come from two probing tasks, POS tagging and word sense disambiguation, on one biLM. They are evidence that depth specializes, not a general law about layer 1 and layer 2.</p>
+    </div>
+  </section>
+
+  <!-- ===== TAB 4: THE EVIDENCE ===== -->
+  <section class="panel" id="panel-results">
+    <h2 class="sec">Six tasks, six improvements</h2>
+    <p class="lede">The evaluation design is the persuasive part. For each task the authors take a strong published baseline, concatenate ELMo to its input, and retrain with no architecture search. Every task improved. Each row below is zoomed to its own scale, so bar lengths are comparable within a row and meaningless across rows. All figures are test-set results from Table 1. <span class="tier reported">Reported</span></p>
+
+    <div class="card" style="padding-top:2px">
+
+      <div class="res">
+        <div class="res-head"><div><span class="res-task">SQuAD</span><span class="res-desc">Question answering</span></div><span class="res-badge">24.9% error cut</span></div>
+        <div class="track"><div class="fill" style="width:26.3%; background:#39434F"></div></div>
+        <div class="track"><div class="fill" style="width:85.0%; background:#B98CFF"></div></div>
+        <div class="res-labels"><span>baseline 81.1 F1</span><span class="hi">with ELMo 85.8 F1</span></div>
+        <details><summary>What changed</summary><p>Axis zoomed to 79 to 87 F1. Baseline is the BiDAF-based system the paper starts from, improved with self-attention. Same architecture, same training data, same hyperparameters except those retuned for the new input. The only change is the input representation.</p></details>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><div><span class="res-task">NER</span><span class="res-desc">Named entities, CoNLL 2003</span></div><span class="res-badge">21.1% error cut</span></div>
+        <div class="track"><div class="fill" style="width:35.8%; background:#39434F"></div></div>
+        <div class="track"><div class="fill" style="width:70.3%; background:#B98CFF"></div></div>
+        <div class="res-labels"><span>baseline 90.15 F1</span><span class="hi">with ELMo 92.22 F1</span></div>
+        <details><summary>What changed</summary><p>Axis zoomed to 88 to 94 F1. Both numbers are means over five runs, and the paper reports a standard deviation, which is why this row carries two decimal places where others carry one. The baseline is a character CNN plus biLSTM plus CRF tagger.</p></details>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><div><span class="res-task">SRL</span><span class="res-desc">Semantic role labeling</span></div><span class="res-badge">17.2% error cut</span></div>
+        <div class="track"><div class="fill" style="width:34.3%; background:#39434F"></div></div>
+        <div class="track"><div class="fill" style="width:80.0%; background:#B98CFF"></div></div>
+        <div class="res-labels"><span>baseline 81.4 F1</span><span class="hi">with ELMo 84.6 F1</span></div>
+        <details><summary>What changed</summary><p>Axis zoomed to 79 to 86 F1. This is also the task carrying the sample-efficiency result below, and the one task in the paper's placement ablation that preferred ELMo at the input only.</p></details>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><div><span class="res-task">Coref</span><span class="res-desc">Coreference resolution</span></div><span class="res-badge">9.8% error cut</span></div>
+        <div class="track"><div class="fill" style="width:31.4%; background:#39434F"></div></div>
+        <div class="track"><div class="fill" style="width:77.1%; background:#B98CFF"></div></div>
+        <div class="res-labels"><span>baseline 67.2 average F1</span><span class="hi">with ELMo 70.4 average F1</span></div>
+        <details><summary>What changed</summary><p>Axis zoomed to 65 to 72 average F1, the mean of three standard coreference metrics. The relative error reduction is the smallest of the six despite a 3.2 point absolute gain, because the baseline sits lower.</p></details>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><div><span class="res-task">SST-5</span><span class="res-desc">Sentiment, five classes</span></div><span class="res-badge">6.8% error cut</span></div>
+        <div class="track"><div class="fill" style="width:34.3%; background:#39434F"></div></div>
+        <div class="track"><div class="fill" style="width:81.4%; background:#B98CFF"></div></div>
+        <div class="res-labels"><span>baseline 51.4% accuracy</span><span class="hi">with ELMo 54.7% accuracy</span></div>
+        <details><summary>What changed</summary><p>Axis zoomed to 49 to 56 percent accuracy. The baseline here is the biattentive classification network from the CoVe paper, so this row is also the closest thing to a head-to-head against the previous generation of contextual vectors.</p></details>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><div><span class="res-task">SNLI</span><span class="res-desc">Textual entailment</span></div><span class="res-badge">5.8% error cut</span></div>
+        <div class="track"><div class="fill" style="width:50.0%; background:#39434F"></div></div>
+        <div class="track"><div class="fill" style="width:67.5%; background:#B98CFF"></div></div>
+        <div class="res-labels"><span>baseline 88.0% accuracy</span><span class="hi">with ELMo 88.7% accuracy</span></div>
+        <details><summary>What changed</summary><p>Axis zoomed to 86 to 90 percent accuracy, the tightest window on the page for the smallest absolute gain, 0.7 points. Means over five runs. A saturated benchmark leaves little room, which is the honest reading of a 5.8 percent error reduction.</p></details>
+      </div>
+
+    </div>
+
+    <div class="note">
+      <div class="label">The number people quoted, and the one that mattered more</div>
+      <p>The headline was SQuAD, plus 4.7 F1. The sleeper result is sample efficiency: on semantic role labeling, a model with ELMo trained on <span class="m">1%</span> of the labelled data reaches roughly the F1 of the baseline trained on <span class="m">10%</span>, and it passes the baseline's best development F1 at epoch 10 where the baseline needs 486. <span class="tier analysis">Analysis</span></p>
+      <p>Pretraining converts compute on raw text into labelled data you no longer have to buy. <strong>That trade is what the field has been running on ever since.</strong></p>
+    </div>
+
+    <div class="note limit">
+      <div class="label">How far these numbers travel</div>
+      <p>Each gain is measured against a specific 2017-era baseline on a specific benchmark, and several of those baselines were themselves near the ceiling of what the benchmark could show. The comparison is to the state of the art of the time, not to anything current. The paper reports means over five runs for NER and SNLI only; the other four rows are single numbers, so small differences in them should not be read as reliable.</p>
+    </div>
+  </section>
+
+  <!-- ===== TAB 5: WHAT STILL HOLDS ===== -->
+  <section class="panel" id="panel-playbook">
+    <h2 class="sec">What still holds, eight years on</h2>
+    <p class="lede">The architecture is obsolete. Several of the habits are not. Each item below is a specific result in the paper followed by what it looks like now, and the second half of each is extrapolation rather than something the paper claims. <span class="tier added">Added here</span></p>
+
+    <div class="plays">
+      <div class="card">
+        <div><span class="play-num">01</span><span class="play-t">Do not default to the last layer</span></div>
+        <p class="play-d">Pull hidden states from every layer of your pretrained model and learn a scalar mix, or at minimum probe which layer suits the task. ELMo's version of this ablation was worth 0.5 F1 on SQuAD dev over a strong top-layer transfer, for four parameters.</p>
+      </div>
+      <div class="card">
+        <div><span class="play-num">02</span><span class="play-t">Match layer depth to task type</span></div>
+        <p class="play-d">Syntax and surface features sit low in the stack, meaning sits high: 97.3 percent POS accuracy from layer 1, 69.0 F1 on word sense from layer 2. Later work found the same ordering in transformer and speech encoders, and wav2vec 2.0 reuses this exact weighted-layer-sum for downstream heads.</p>
+      </div>
+      <div class="card">
+        <div><span class="play-num">03</span><span class="play-t">Normalize magnitudes before mixing</span></div>
+        <p class="play-d">The gamma scale exists because pretrained activations have a different scale from the task model's other inputs and optimization suffers without a correction. Today: layer-normalize each layer before the mix, or at minimum standardize frozen features before they reach a downstream head.</p>
+      </div>
+      <div class="card">
+        <div><span class="play-num">04</span><span class="play-t">Treat the injection point as an ablation</span></div>
+        <p class="play-d">The paper tested ELMo at the input of the task encoder against input plus output. On dev sets, SQuAD went 85.1 to 85.6 and SNLI 88.9 to 89.5 by adding the output position, while SRL fell 84.7 to 84.3. Where you fuse pretrained features is a choice with a measurable answer, not a convention.</p>
+      </div>
+      <div class="card">
+        <div><span class="play-num">05</span><span class="play-t">Domain-adapt on unlabelled text first</span></div>
+        <p class="play-d">Fine-tuning the biLM on in-domain raw text, with no labels, lowered perplexity and improved downstream scores. The modern form is continued pretraining on domain or task text before any supervised fine-tuning, usually the cheapest gain available for a niche domain.</p>
+      </div>
+      <div class="card">
+        <div><span class="play-num">06</span><span class="play-t">Buy compute, not labels, when data is scarce</span></div>
+        <p class="play-d">With a small labelled set, a better representation beats model tweaks: ELMo at 1 percent of the SRL training data roughly matches the baseline at 10 percent. Annotation budget often does less than adaptation compute, and this result is the earliest clean measurement of that trade.</p>
+      </div>
+    </div>
+
+    <div class="card timeline">
+      <div class="label">What happened next</div>
+      <div class="tl-grid">
+        <div><div class="tl-y">FEB 2018</div><div class="tl-t">ELMo</div><div class="tl-d">Pretrain a deep biLM, transfer frozen features, learn a layer mix. NAACL best paper.</div></div>
+        <div><div class="tl-y">JUN 2018</div><div class="tl-t">GPT-1</div><div class="tl-d">Swaps the LSTM for a transformer and frozen features for fine-tuning the whole network.</div></div>
+        <div><div class="tl-y">OCT 2018</div><div class="tl-t">BERT</div><div class="tl-d">Makes bidirectionality deep with masked language modelling, instead of two independent directions joined at the end, and names that limitation directly.</div></div>
+        <div><div class="tl-y">SINCE</div><div class="tl-t">Everything</div><div class="tl-d">Pretrain on raw text at scale, then adapt. The thesis held; only the scale and the architecture changed.</div></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="label">If you remember one sentence</div>
+      <p>A language model trained only to predict the next token learns syntax, semantics and word sense as internal structure, and <strong>exposing that structure layer by layer transfers to essentially any language task.</strong> The paper measured this on six benchmarks with a frozen two-layer LSTM. Everything since has been the same sentence at a different scale.</p>
+    </div>
+  </section>
+
+  <section class="sources">
+    <h2>Sources</h2>
+    <ul>
+      <li><strong>The anchor.</strong> Peters M, Neumann M, Iyyer M, Gardner M, Clark C, Lee K, Zettlemoyer L. 2018. Deep contextualized word representations. Proceedings of NAACL-HLT 2018, 2227 to 2237. <a href="https://arxiv.org/abs/1802.05365">arXiv:1802.05365</a>, <a href="https://doi.org/10.18653/v1/N18-1202">doi:10.18653/v1/N18-1202</a> <em>- every Reported and Analysis figure on this page comes from here: Table 1 for the six tasks, Table 2 for the layer-mixing ablation, Table 3 for the injection-point ablation, Table 4 for the nearest-neighbour example, and the analysis section for the POS, WSD, perplexity and sample-efficiency numbers.</em></li>
+      <li>Peters M, Ammar W, Bhagavatula C, Power R. 2017. Semi-supervised sequence tagging with bidirectional language models. <a href="https://arxiv.org/abs/1705.00108">arXiv:1705.00108</a> <em>- TagLM, the top-layer-only predecessor the paper improves on.</em></li>
+      <li>McCann B, Bradbury J, Xiong C, Socher R. 2017. Learned in translation: contextualized word vectors. <a href="https://arxiv.org/abs/1708.00107">arXiv:1708.00107</a> <em>- CoVe, the other top-layer baseline, and the source of the SST-5 baseline model.</em></li>
+      <li>Chelba C, et al. 2014. One billion word benchmark for measuring progress in statistical language modeling. <a href="https://arxiv.org/abs/1312.3005">arXiv:1312.3005</a> <em>- the pretraining corpus.</em></li>
+      <li>Kim Y, Jernite Y, Sontag D, Rush A. 2015. Character-aware neural language models. <a href="https://arxiv.org/abs/1508.06615">arXiv:1508.06615</a> <em>- the character CNN plus highway token layer that ELMo uses as layer 0.</em></li>
+      <li>Devlin J, Chang M, Lee K, Toutanova K. 2018. BERT: pre-training of deep bidirectional transformers for language understanding. <a href="https://arxiv.org/abs/1810.04805">arXiv:1810.04805</a> <em>- names the shallow-bidirectionality limitation described in tab 2.</em></li>
+      <li>Gururangan S, et al. 2020. Don't stop pretraining: adapt language models to domains and tasks. <a href="https://arxiv.org/abs/2004.10964">arXiv:2004.10964</a> <em>- the modern form of the paper's domain fine-tuning result, cited in tab 5.</em></li>
+      <li>Baevski A, Zhou H, Mohamed A, Auli M. 2020. wav2vec 2.0. <a href="https://arxiv.org/abs/2006.11477">arXiv:2006.11477</a> <em>- one example of the weighted layer sum outliving the architecture it was invented for.</em></li>
+    </ul>
+    <p class="scopenote">Scope: this is a close reading of one paper. Figures marked Reported are test-set results from its Table 1. Figures marked Analysis come from its ablations and probing experiments, which use development sets, single tasks and in most cases a single run, and are weaker evidence than the headline table. Anything marked Added here was written for this page: the verb example in tab 1, three of the four slider presets in tab 3, and the present-day half of every item in tab 5. The mixer computes a softmax over three numbers you choose and nothing else; no language model runs in this page, and no figure on it is a measurement made here. Benchmark numbers are comparisons against 2017-era baselines and say nothing about current systems.</p>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+document.body.classList.add("js");
+
+/* Duplicate each header stream so the marquee can loop without a visible seam. */
+(function () {
+  ["stream-r", "stream-l"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = el.innerHTML + el.innerHTML;
+  });
+})();
+
+/* ---------------- tabs ---------------- */
+(function () {
+  var btns = document.querySelectorAll(".tabbtn");
+  btns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      btns.forEach(function (b) { b.classList.remove("on"); b.removeAttribute("aria-current"); });
+      document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("on"); });
+      btn.classList.add("on");
+      btn.setAttribute("aria-current", "true");
+      var panel = document.getElementById("panel-" + btn.dataset.tab);
+      if (panel) panel.classList.add("on");
+    });
+  });
+})();
+
+/* ---------------- tab 1: sense switcher ---------------- */
+(function () {
+  var pills = document.querySelectorAll("#sent-pills .pill");
+  pills.forEach(function (p) {
+    p.addEventListener("click", function () {
+      pills.forEach(function (x) { x.classList.remove("on"); });
+      document.querySelectorAll(".sentbox").forEach(function (b) { b.classList.remove("on"); });
+      p.classList.add("on");
+      var box = document.getElementById("sent-" + p.dataset.sent);
+      if (box) box.classList.add("on");
+    });
+  });
+})();
+
+/* ---------------- tab 2: architecture blocks ---------------- */
+(function () {
+  var btns = document.querySelectorAll(".archbtn");
+  btns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      btns.forEach(function (x) { x.classList.remove("on"); });
+      document.querySelectorAll(".arch-detail").forEach(function (d) { d.classList.remove("on"); });
+      b.classList.add("on");
+      var d = document.getElementById("arch-" + b.dataset.arch);
+      if (d) d.classList.add("on");
+    });
+  });
+})();
+
+/* ---------------- tab 3: the mixer ----------------
+   s = softmax(w), then each segment of the bar takes s[i] of the width and the
+   whole bar is scaled by gamma. Nothing here runs a language model; it is the
+   transfer equation with numbers you choose. */
+(function () {
+  var w = [0, 0, 0], g = 1.0;
+  var sliders = [document.getElementById("w0"), document.getElementById("w1"), document.getElementById("w2")];
+  var gSlider = document.getElementById("g");
+  var noteEl = document.getElementById("mix-note");
+  if (!sliders[0] || !gSlider) return;
+
+  function softmax(a) {
+    var m = Math.max.apply(null, a);
+    var e = a.map(function (x) { return Math.exp(x - m); });
+    var Z = e.reduce(function (p, c) { return p + c; }, 0);
+    return e.map(function (x) { return x / Z; });
+  }
+
+  function update() {
+    var s = softmax(w);
+    for (var i = 0; i < 3; i++) {
+      document.getElementById("s" + i + "v").textContent = "s" + i + " = " + Math.round(s[i] * 100) + "%";
+      document.getElementById("seg" + i).style.width = (s[i] * 100) + "%";
+    }
+    document.getElementById("gv").textContent = "gamma = " + g.toFixed(1);
+
+    var bar = document.getElementById("mixbar");
+    bar.style.width = Math.min(100, g * 50) + "%";
+    bar.setAttribute("aria-label",
+      "Mixed vector: " + Math.round(s[0] * 100) + " percent layer 0, " +
+      Math.round(s[1] * 100) + " percent layer 1, " +
+      Math.round(s[2] * 100) + " percent layer 2, scale " + g.toFixed(1));
+
+    var top = Math.max.apply(null, s);
+    var dom = s.indexOf(top);
+    var spread = top - Math.min.apply(null, s);
+    var verdict;
+    if (spread < 0.08) {
+      verdict = "A near-uniform mix, which is where heavy regularization puts you. Safe, and it leaves task-specific signal on the table.";
+    } else if (dom === 0) {
+      verdict = "Token layer dominant. You have mostly rebuilt a context-free embedding, a character-aware word2vec, and thrown the contextual part away.";
+    } else if (dom === 1) {
+      verdict = "Layer 1 dominant, a syntax extractor. This is the direction a part-of-speech task has reason to move in.";
+    } else {
+      verdict = "Layer 2 dominant, a semantics extractor. This is the word-sense end of the stack.";
+    }
+    document.getElementById("mix-verdict").textContent = verdict;
+  }
+
+  sliders.forEach(function (sl, i) {
+    sl.addEventListener("input", function () {
+      w[i] = parseFloat(sl.value);
+      noteEl.style.display = "none";
+      update();
+    });
+  });
+  gSlider.addEventListener("input", function () {
+    g = parseFloat(gSlider.value);
+    noteEl.style.display = "none";
+    update();
+  });
+
+  document.querySelectorAll("#preset-chips .chip").forEach(function (c) {
+    c.addEventListener("click", function () {
+      w = c.dataset.w.split(",").map(parseFloat);
+      g = parseFloat(c.dataset.g);
+      sliders.forEach(function (sl, i) { sl.value = w[i]; });
+      gSlider.value = g;
+      noteEl.textContent = c.dataset.note;
+      noteEl.style.display = "block";
+      update();
+    });
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>
