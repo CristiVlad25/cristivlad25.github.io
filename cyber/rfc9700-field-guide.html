@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RFC 9700 · OAuth 2.0 and OIDC offensive security field guide</title>
+<meta name="description" content="Attacker model, flow-by-flow attack surface, a 16-entry exploit catalog, and two working checklists, traced back to RFC 9700 (the OAuth 2.0 Security BCP) and OpenID Connect Core 1.0. For authorized security testing.">
+<meta property="og:title" content="RFC 9700 · OAuth 2.0 and OIDC offensive security field guide">
+<meta property="og:description" content="An attacker model, a flow-by-flow attack surface map, a 16-entry exploit catalog, and two working checklists, all traced back to RFC 9700 and OpenID Connect Core 1.0.">
+<meta property="og:type" content="article">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  .cv-nav{
+    font:11px/1 "IBM Plex Mono",ui-monospace,Menlo,monospace;
+    letter-spacing:.14em;text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;
+    padding:14px 28px;
+    background:#0B0E13;
+    border-bottom:1px solid #1F2630;
+    position:relative;z-index:9999;
+  }
+  .cv-nav a{color:#7D8794;text-decoration:none;transition:color .14s ease}
+  .cv-nav a:hover,.cv-nav a:focus-visible{color:#E6E9ED}
+  .cv-nav span{color:#39434F}
+  @media (max-width:620px){ .cv-nav{padding:12px 20px} }
+  @media (prefers-reduced-motion:reduce){ .cv-nav a{transition:none} }
+
+  .cv-scope{
+    margin:0; padding:12px 20px;
+    font:10px/1.7 "IBM Plex Mono",ui-monospace,Menlo,monospace; letter-spacing:.14em; text-transform:uppercase;
+    color:#7D8794; border-bottom:1px solid #1F2630; background:#0B0E13;
+  }
+  .cv-scope b{ color:#7D8794; font-weight:500 }
+  @media (max-width:620px){ .cv-scope{padding:10px 20px} }
+
+  :root {
+    --ink: #0B0E13;
+    --panel: #10141B;
+    --panel2: #161B24;
+    --border: #1F2630;
+    --border-soft: #1F2630;
+    --rule-lit: #39434F;
+    --paper: #E6E9ED;
+    --paper-dim: #7D8794;
+    --muted: #7D8794;
+    --cyber: #6D9BFF;
+    --cyber-dim: #16233D;
+    --crit: #F2545B;
+    --high: #F5A623;
+    --med: #B98CFF;
+    --low: #4FD1A5;
+    --low-dim: #1B4A3E;
+    --font-display: 'IBM Plex Sans Condensed', 'Arial Narrow', sans-serif;
+    --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--ink); }
+  body { color: var(--paper); font-family: var(--font-body); }
+  ::selection { background: rgba(109,155,255,0.35); }
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--cyber); outline-offset: 2px; }
+  button { font-family: inherit; }
+  p { margin: 0; }
+  svg { display: block; flex-shrink: 0; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding: 36px 20px 80px; }
+
+  /* ---------- header ---------- */
+  header { margin-bottom: 30px; }
+  .eyebrow-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: var(--cyber); }
+  .eyebrow-row span { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 2.5px; text-transform: uppercase; }
+  h1 { font-family: var(--font-display); font-size: clamp(28px, 4.5vw, 42px); font-weight: 700; letter-spacing: -0.7px; margin: 0; line-height: 1.08; color: var(--paper); }
+  h1 .accent { color: var(--cyber); }
+  .lead { font-family: var(--font-body); font-size: 15px; color: var(--paper-dim); margin-top: 14px; max-width: 660px; line-height: 1.6; }
+  .stats-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .stat-chip { display: flex; align-items: baseline; gap: 6px; border: 1px solid var(--border); border-radius: 7px; padding: 6px 11px; }
+  .stat-chip b { font-family: var(--font-mono); font-size: 15px; color: var(--cyber); font-weight: 600; }
+  .stat-chip span { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+
+  /* ---------- tab nav ---------- */
+  nav.tabnav { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border); margin-bottom: 30px; position: sticky; top: 0; background: var(--ink); z-index: 5; padding-top: 4px; }
+  .tab-btn { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-family: var(--font-mono); font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: color .12s ease; }
+  .tab-btn svg { color: var(--muted); transition: color .12s ease; }
+  .tab-btn.active { color: var(--paper); border-bottom-color: var(--cyber); }
+  .tab-btn.active svg { color: var(--cyber); }
+
+  /* ---------- section heading ---------- */
+  .section-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: var(--cyber); margin-bottom: 6px; text-transform: uppercase; }
+  .section-title { font-family: var(--font-display); font-size: 26px; color: var(--paper); margin: 0; font-weight: 600; letter-spacing: -0.3px; }
+  .section-sub { font-family: var(--font-body); font-size: 14px; color: var(--paper-dim); margin-top: 8px; max-width: 720px; line-height: 1.55; }
+  .section-heading { margin-bottom: 22px; }
+
+  /* ---------- chips ---------- */
+  .chip { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.3px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--paper-dim); cursor: pointer; white-space: nowrap; transition: all .12s ease; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 7px; }
+
+  /* ---------- attacker model ---------- */
+  .attacker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .attacker-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .attacker-top { display: flex; align-items: center; gap: 10px; }
+  .attacker-icon-wrap { width: 34px; height: 34px; border-radius: 8px; background: var(--cyber-dim); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--cyber); }
+  .attacker-id { font-family: var(--font-mono); font-size: 11px; color: var(--cyber); letter-spacing: 1px; }
+  .attacker-name { font-family: var(--font-display); font-size: 16px; color: var(--paper); font-weight: 600; }
+  .attacker-tagline { font-family: var(--font-body); font-size: 12.5px; color: var(--paper-dim); font-style: italic; }
+  .attacker-detail { font-family: var(--font-body); font-size: 13.5px; color: var(--paper); line-height: 1.6; margin: 0; opacity: 0.9; }
+  .attacker-example { font-family: var(--font-mono); font-size: 11.5px; color: var(--paper-dim); border-left: 2px solid var(--border); padding-left: 10px; margin-top: 2px; line-height: 1.5; }
+
+  /* ---------- flow maps ---------- */
+  .flow-toprow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; justify-content: space-between; }
+  .attacker-view-btn { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11.5px; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--paper-dim); cursor: pointer; }
+  .attacker-view-btn.on { border-color: var(--high); background: rgba(245,166,35,0.12); color: var(--high); }
+  .flow-blurb { font-family: var(--font-body); font-size: 13.5px; color: var(--paper-dim); line-height: 1.6; margin-bottom: 18px; max-width: 760px; }
+  .flow-blurb .rt { font-family: var(--font-mono); color: var(--low); font-size: 12px; }
+
+  .flow-rail { display: flex; overflow-x: auto; gap: 0; padding-bottom: 10px; }
+  .flow-step-wrap { display: flex; align-items: center; flex-shrink: 0; }
+  .flow-step-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; padding: 4px 14px; min-width: 108px; }
+  .step-circle { width: 34px; height: 34px; border-radius: 99px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; font-weight: 600; border: 2px solid var(--border); background: var(--panel); color: var(--paper-dim); transition: all .12s ease; }
+  .step-circle.selected { border-color: var(--cyber); background: var(--cyber-dim); color: var(--cyber); }
+  .step-circle.flagged { border-color: var(--high); background: rgba(245,166,35,0.12); color: var(--high); }
+  .step-label { font-family: var(--font-body); font-size: 11px; color: var(--paper-dim); text-align: center; line-height: 1.3; }
+  .step-label.selected { color: var(--paper); }
+  .flow-arrow { color: var(--border); flex-shrink: 0; margin: 0 -2px; }
+
+  .step-detail { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-top: 8px; }
+  .step-detail-who { font-family: var(--font-mono); font-size: 11px; color: var(--cyber); margin-bottom: 4px; }
+  .step-detail-title { font-family: var(--font-display); font-size: 18px; color: var(--paper); font-weight: 600; }
+  .step-detail-text { font-family: var(--font-body); font-size: 13.5px; color: var(--paper); opacity: 0.9; line-height: 1.6; margin-top: 12px; }
+  pre.step-example { font-family: var(--font-mono); font-size: 12px; color: var(--paper-dim); background: var(--ink); border: 1px solid var(--border-soft); border-radius: 7px; padding: 14px; overflow-x: auto; line-height: 1.6; white-space: pre; margin: 14px 0 0 0; }
+  .step-attacks-label { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); letter-spacing: 1px; margin-top: 16px; margin-bottom: 8px; text-transform: uppercase; }
+  .step-attack-chip { display: flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 12px; color: var(--paper); background: var(--panel2); border-radius: 6px; padding: 6px 10px; cursor: pointer; border: 1px solid var(--border); }
+  .step-attack-dot { width: 6px; height: 6px; border-radius: 99px; flex-shrink: 0; }
+
+  .compare-wrap { margin-top: 34px; overflow-x: auto; }
+  .compare-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
+  table.compare { width: 100%; border-collapse: collapse; min-width: 560px; }
+  table.compare th { text-align: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border); letter-spacing: 0.5px; }
+  table.compare th:first-child { text-align: left; }
+  table.compare td { text-align: center; font-family: var(--font-body); font-size: 12.5px; color: var(--paper-dim); padding: 9px 10px; border-top: 1px solid var(--border-soft); }
+  table.compare td:first-child { text-align: left; color: var(--paper); }
+  table.compare .yes { color: var(--cyber); }
+  table.compare .no { color: var(--muted); opacity: .5; }
+  table.compare .varies { font-family: var(--font-mono); font-size: 11px; color: var(--low); }
+
+  /* ---------- catalog ---------- */
+  .search-bar { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin-bottom: 14px; color: var(--muted); }
+  .search-bar input { background: none; border: none; outline: none; color: var(--paper); font-family: var(--font-body); font-size: 13.5px; flex: 1; }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-clear { background: none; border: none; cursor: pointer; color: var(--muted); display: flex; }
+  .filters-block { margin-bottom: 10px; }
+  .filters-block + .filters-block { margin-bottom: 20px; }
+  .clear-filters { font-family: var(--font-mono); font-size: 11px; color: var(--muted); background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+  .catalog-empty { font-family: var(--font-body); color: var(--muted); font-size: 13px; padding: 30px; text-align: center; border: 1px dashed var(--border); border-radius: 10px; }
+  .catalog-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .catalog-card { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; transition: border-color .15s ease; }
+  .catalog-card-header { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: none; border: none; cursor: pointer; text-align: left; }
+  .catalog-card-header svg.cat-icon { color: var(--paper-dim); }
+  .catalog-card-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+  .catalog-card-name { font-family: var(--font-display); font-size: 15.5px; color: var(--paper); font-weight: 600; }
+  .catalog-card-summary { font-family: var(--font-body); font-size: 12.5px; color: var(--paper-dim); line-height: 1.4; }
+  .catalog-card-attackers { display: flex; gap: 5px; flex-shrink: 0; }
+  .catalog-card-attackers span { font-family: var(--font-mono); font-size: 10px; color: var(--cyber); border: 1px solid var(--cyber-dim); border-radius: 4px; padding: 2px 5px; }
+  .catalog-chevron { flex-shrink: 0; color: var(--muted); transition: transform .15s ease; }
+  .catalog-chevron.open { transform: rotate(180deg); }
+
+  .severity-pill { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.6px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; }
+  .severity-dot { width: 6px; height: 6px; border-radius: 99px; display: inline-block; }
+
+  .catalog-card-body { padding: 0 18px 20px 46px; display: flex; flex-direction: column; gap: 16px; }
+  .catalog-card-body.hidden { display: none; }
+  .ref-badge { font-family: var(--font-mono); font-size: 10px; color: var(--low); border: 1px solid var(--low-dim); background: rgba(79,209,165,0.08); padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .badge-row .cat-name { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .field-label { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .field-p { font-family: var(--font-body); font-size: 13px; color: var(--paper-dim); line-height: 1.65; margin: 0; }
+  ol.steps-list { margin: 6px 0 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+  ol.steps-list li { font-family: var(--font-body); font-size: 13px; color: var(--paper-dim); line-height: 1.65; padding-left: 2px; }
+  .tester-note-box { background: rgba(79,209,165,0.07); border: 1px solid var(--low-dim); border-radius: 7px; padding: 12px; }
+  .tester-note-box .field-p { color: var(--paper); opacity: 0.95; }
+
+  /* ---------- checklists (id token + pentest) ---------- */
+  .progress-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .progress-track { flex: 1; height: 6px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--cyber); transition: width .2s ease; }
+  .progress-fill.amber { background: var(--high); }
+  .progress-text { font-family: var(--font-mono); font-size: 12px; color: var(--paper-dim); white-space: nowrap; }
+  .reset-btn { font-family: var(--font-mono); font-size: 11px; color: var(--muted); background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .group-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
+
+  .check-row { display: flex; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; transition: background .12s ease, border-color .12s ease; }
+  .check-row.checked { background: rgba(109,155,255,0.06); border-color: var(--cyber-dim); }
+  .check-row-btn { background: none; border: none; cursor: pointer; flex-shrink: 0; padding-top: 2px; color: var(--muted); display: flex; }
+  .check-row.checked .check-row-btn { color: var(--cyber); }
+  .check-row-body { flex: 1; }
+  .check-row-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .check-row-num { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .check-row-claim { font-family: var(--font-mono); font-size: 13px; color: var(--low); font-weight: 600; }
+  .check-row-text { font-family: var(--font-body); font-size: 13px; line-height: 1.65; color: var(--paper); opacity: 0.92; }
+  .check-row.checked .check-row-text { color: var(--paper-dim); opacity: 0.6; }
+  .check-row-warn { display: flex; gap: 6px; margin-top: 8px; align-items: flex-start; color: var(--crit); }
+  .check-row-warn p { font-family: var(--font-body); font-size: 12px; color: var(--paper-dim); line-height: 1.65; opacity: 0.85; }
+  .check-row.checked .check-row-warn p { opacity: 0.5; }
+  .check-row-warn .lbl { color: var(--crit); font-family: var(--font-mono); font-size: 11px; }
+
+  .pt-group { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; margin-bottom: 10px; }
+  .pt-group-header { width: 100%; display: flex; align-items: center; gap: 10px; padding: 13px 16px; background: none; border: none; cursor: pointer; text-align: left; color: var(--high); }
+  .pt-group-title { font-family: var(--font-display); font-size: 14.5px; color: var(--paper); font-weight: 600; flex: 1; }
+  .pt-group-count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .pt-group-count.done { color: var(--cyber); }
+  .pt-group-chevron { color: var(--muted); transition: transform .15s ease; }
+  .pt-group-chevron.open { transform: rotate(180deg); }
+  .pt-group-body { padding: 0 16px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .pt-group-body.hidden { display: none; }
+  .pt-item { display: flex; gap: 10px; padding: 10px 12px; background: var(--panel2); border-radius: 7px; border: 1px solid transparent; align-items: flex-start; }
+  .pt-item.checked { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.4); }
+  .pt-item-btn { background: none; border: none; cursor: pointer; flex-shrink: 0; padding-top: 1px; color: var(--muted); display: flex; }
+  .pt-item.checked .pt-item-btn { color: var(--high); }
+  .pt-item-text { flex: 1; font-family: var(--font-body); font-size: 13px; line-height: 1.65; color: var(--paper); opacity: 0.92; }
+  .pt-item.checked .pt-item-text { color: var(--paper-dim); opacity: 0.6; }
+
+  /* ---------- footer ---------- */
+  footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border-soft); }
+  footer p { font-family: var(--font-body); font-size: 12px; color: var(--muted); line-height: 1.7; margin: 0; }
+  footer p + p { margin-top: 10px; }
+  footer p.cite { font-family: var(--font-mono); font-size: 11.5px; }
+  footer a { color: var(--cyber); text-decoration: none; border-bottom: 1px solid var(--border); }
+  footer a:hover, footer a:focus-visible { border-bottom-color: var(--cyber); }
+</style>
+</head>
+<body>
+
+<nav class="cv-nav">
+  <a href="/">Cristi Vlad</a>
+  <span>/</span>
+  <a href="/#cyber">Cyber</a>
+</nav>
+
+<p class="cv-scope">Source reading <b>&middot;</b> RFC 9700, BCP 240 <b>&middot;</b> Lodderstedt, Bradley, Labunets, Fett 2025 <b>&middot;</b> the OAuth 2.0 Security BCP's attacker model and attack catalog, walked as a testing tool</p>
+
+  <div class="wrap">
+    <header>
+      <div class="eyebrow-row">
+        <span id="hdr-icon"></span>
+        <span>RFC 9700 &middot; OpenID Connect Core 1.0</span>
+      </div>
+      <h1>OAuth 2.0 and OIDC<br /><span class="accent">offensive security field guide</span></h1>
+      <p class="lead">
+        This is a source reading of RFC 9700, the OAuth 2.0 Security Best Current Practice, not a general survey of
+        OAuth attacks. Its attacker model and 16 named attacks are turned into an attacker model reference, a
+        flow-by-flow attack surface map, a searchable exploit catalog, and two working checklists cross-referenced
+        against OpenID Connect Core 1.0 for ID Token handling. Built for authorized security testing.
+      </p>
+      <div class="stats-row" id="stats-row"></div>
+    </header>
+
+    <nav class="tabnav" id="tabnav"></nav>
+
+    <main id="main-content"></main>
+
+    <footer>
+      <p class="cite">
+        Lodderstedt T, Bradley J, Labunets A, Fett D, Eds. 2025. Best Current Practice for OAuth 2.0 Security.
+        BCP 240, RFC 9700. <a href="https://datatracker.ietf.org/doc/html/rfc9700">datatracker.ietf.org/doc/html/rfc9700</a>
+        <b>&middot;</b> <a href="https://doi.org/10.17487/RFC9700">doi:10.17487/RFC9700</a>
+      </p>
+      <p class="cite">
+        Sakimura N, Bradley J, Jones M, de Medeiros B, Mortimore C. 2023. OpenID Connect Core 1.0 incorporating
+        errata set 2. <a href="https://openid.net/specs/openid-connect-core-1_0.html">openid.net/specs/openid-connect-core-1_0.html</a>
+      </p>
+      <p>
+        For authorized security assessments and defensive hardening only - always operate within the scope and
+        permissions of an engagement. Section references point back to RFC 9700 unless marked OIDC.
+      </p>
+    </footer>
+  </div>
+
+<script>
+/* ================================================================== */
+/*  ICONS  - hand-drawn line-icon set, 24x24, stroke=currentColor       */
+/* ================================================================== */
+const ICONS = {
+  users: '<path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M2 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17" cy="8" r="2.5"/><path d="M15 14.2c2.3.4 4 2.2 4 5.8"/>',
+  network: '<circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M6.7 7.3 10.3 16.3"/><path d="M17.3 7.3 13.7 16.3"/><path d="M7 6h10"/>',
+  eye: '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff: '<path d="M3 3l18 18"/><path d="M10.6 5.1A11 11 0 0 1 12 5c7 0 11 7 11 7a13.2 13.2 0 0 1-3.1 3.8"/><path d="M6.1 6.1C3.3 7.9 1 12 1 12s4 7 11 7a10.4 10.4 0 0 0 5-1.2"/><path d="M9.5 9.5a3 3 0 0 0 4.2 4.2"/>',
+  keyround: '<circle cx="8" cy="15" r="4.5"/><path d="M11.5 11.5 20 3"/><path d="M16 7l2.5 2.5"/><path d="M13.3 9.7l2 2"/>',
+  gitbranch: '<circle cx="7" cy="5" r="2.2"/><circle cx="7" cy="19" r="2.2"/><circle cx="17" cy="9" r="2.2"/><line x1="7" y1="7.2" x2="7" y2="16.8"/><path d="M7 9.5c0 3.5 3 3.9 7 3.9"/>',
+  shieldalert: '<path d="M12 2 4 5v6c0 5.2 3.4 8.7 8 10 4.6-1.3 8-4.8 8-10V5l-8-3Z"/><line x1="12" y1="8" x2="12" y2="12.5"/><circle cx="12" cy="15.5" r="0.9" fill="currentColor" stroke="none"/>',
+  shieldoff: '<path d="M12 2 4 5v6c0 5.2 3.4 8.7 8 10 4.6-1.3 8-4.8 8-10V5l-8-3Z"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/>',
+  shieldcheck: '<path d="M12 2 4 5v6c0 5.2 3.4 8.7 8 10 4.6-1.3 8-4.8 8-10V5l-8-3Z"/><path d="M9 12l2 2 4-4.5"/>',
+  lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
+  fingerprint: '<path d="M12 3a7 7 0 0 0-7 7c0 1.8.4 3 1 4"/><path d="M12 3a7 7 0 0 1 7 7c0 3-.6 5.4-1.6 7.2"/><path d="M9 21c1-1.8 1.5-3.6 1.5-6a1.5 1.5 0 0 1 3 0c0 1-.1 2-.4 3"/><path d="M6.5 18.5c.7-1.7 1-3.3 1-5.5a4.5 4.5 0 0 1 9 0c0 .8-.05 1.5-.15 2.2"/><path d="M12 10a3 3 0 0 1 3 3c0 2.3-.3 4-1 5.5"/>',
+  refreshcw: '<path d="M20 11a8 8 0 0 0-14.9-3.5"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14.9 3.5"/><path d="M20 20v-5h-5"/>',
+  rotateccw: '<path d="M4 11a8 8 0 1 1 2.3 5.6"/><path d="M4 16v-5h5"/>',
+  server: '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><circle cx="7" cy="7.5" r="0.8" fill="currentColor" stroke="none"/><circle cx="7" cy="16.5" r="0.8" fill="currentColor" stroke="none"/>',
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/><line x1="20" y1="20" x2="15.3" y2="15.3"/>',
+  chevrondown: '<polyline points="5,8 12,15 19,8"/>',
+  chevronright: '<polyline points="8,5 15,12 8,19"/>',
+  checkcircle2: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5.5-6"/>',
+  circle: '<circle cx="12" cy="12" r="9"/>',
+  alerttriangle: '<path d="M12 3.5 2 20.5h20L12 3.5Z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>',
+  radio: '<circle cx="12" cy="12" r="2.2"/><path d="M8.5 8.5a5 5 0 0 0 0 7"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M5.5 5.5a9 9 0 0 0 0 13"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>',
+  x: '<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>',
+  arrowright: '<line x1="4" y1="12" x2="19" y2="12"/><polyline points="13,6 19,12 13,18"/>',
+  listchecks: '<path d="M4 6.3l1.4 1.4L8.4 4.7"/><line x1="12" y1="6" x2="21" y2="6"/><path d="M4 13.3l1.4 1.4 3-3"/><line x1="12" y1="13" x2="21" y2="13"/><path d="M4 20.3l1.4 1.4 3-3"/><line x1="12" y1="20" x2="21" y2="20"/>',
+  info: '<circle cx="12" cy="12" r="9.5"/><line x1="12" y1="11" x2="12" y2="16.5"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/>',
+  bug: '<rect x="7.5" y="8" width="9" height="10" rx="4"/><line x1="12" y1="3" x2="12" y2="8"/><line x1="9" y1="4.5" x2="10.5" y2="7"/><line x1="15" y1="4.5" x2="13.5" y2="7"/><line x1="3.5" y1="11" x2="7.5" y2="11"/><line x1="3.5" y1="15" x2="7.5" y2="15"/><line x1="16.5" y1="11" x2="20.5" y2="11"/><line x1="16.5" y1="15" x2="20.5" y2="15"/><line x1="5" y1="19" x2="8" y2="17"/><line x1="19" y1="19" x2="16" y2="17"/>',
+  crosshair: '<circle cx="12" cy="12" r="8.5"/><line x1="12" y1="1.5" x2="12" y2="5.5"/><line x1="12" y1="18.5" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="5.5" y2="12"/><line x1="18.5" y1="12" x2="22.5" y2="12"/>',
+  arrowrightleft: '<polyline points="16,3 21,8 16,13"/><line x1="21" y1="8" x2="3" y2="8"/><polyline points="8,11 3,16 8,21"/><line x1="3" y1="16" x2="21" y2="16"/>',
+};
+function icon(name, size, color) {
+  size = size || 16;
+  const c = color ? ('color:' + color + ';') : '';
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="' + c + 'flex-shrink:0" aria-hidden="true">' + ICONS[name] + '</svg>';
+}
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ================================================================== */
+/*  COLORS                                                             */
+/* ================================================================== */
+const COLORS = {
+  crit: '#F2545B', high: '#F5A623', med: '#B98CFF', low: '#4FD1A5',
+  cyber: '#6D9BFF',
+  border: '#1F2630', paperDim: '#7D8794', muted: '#7D8794',
+};
+const SEV_COLOR = { Critical: COLORS.crit, High: COLORS.high, Medium: COLORS.med };
+
+/* ================================================================== */
+/*  DATA  - ATTACKER MODEL (RFC 9700 §3)                                 */
+/* ================================================================== */
+const ATTACKERS = [
+  { id: 'A1', name: 'Web Attacker', tagline: 'Runs sites & clients, lures victims', icon: 'users',
+    detail: 'Operates an arbitrary number of endpoints, browsers and even registered OAuth clients, plus their own authorization and resource servers. Can lure a victim to any attacker-chosen URL at any time (malvertising, phishing email) and replay any secret they legitimately learn. Cannot read traffic that was never addressed to them.',
+    example: 'Registers a rogue client via self-service dynamic registration, or hosts a page that kicks off a crafted /authorize request against a real client_id.' },
+  { id: 'A2', name: 'Network Attacker', tagline: 'A1 + full control of the wire', icon: 'network',
+    detail: 'Everything A1 can do, plus eavesdrop on, modify, spoof, or drop any message not protected end-to-end by TLS. Think malicious Wi-Fi AP, a compromised ISP, or a state-level actor sitting at an internet exchange point.',
+    example: 'ARP-spoofs a shared network to intercept the very first, unauthenticated redirect of a mix-up attack chain.' },
+  { id: 'A3', name: 'Response Reader', tagline: 'Can read the authorization response', icon: 'eye',
+    detail: 'Gains read-only access to whatever comes back from the AS toward the client\u2019s redirect_uri - via a Referer leak, browser history, shared logs, or a compromised intermediary. Cannot modify it in flight.',
+    example: 'Pulls a leaked code or access_token out of a shared reverse-proxy access log.' },
+  { id: 'A4', name: 'Request Reader', tagline: 'Can read the authorization request', icon: 'eyeoff',
+    detail: 'Symmetric to A3, on the way out - sees the parameters the client sent toward the AS. Matters most for anything sensitive carried in that request, such as an unhashed PKCE verifier.',
+    example: 'Observes a code_challenge_method=plain value in transit - the raw verifier is the challenge itself.' },
+  { id: 'A5', name: 'Token Acquirer', tagline: 'Ends up holding a live access token', icon: 'keyround',
+    detail: 'Obtains a genuinely valid access token some other way - a compromised or counterfeit resource server, a late-binding misconfiguration, or social-engineering the resource owner into pointing their client at attacker infrastructure.',
+    example: 'Stands up a fake "connect your calendar" resource server that harvests every token sent its way.' },
+];
+
+/* ================================================================== */
+/*  DATA  - ATTACK CATALOG (RFC 9700 §4)                                 */
+/* ================================================================== */
+const CATEGORIES = [
+  'Redirect & Response Leakage',
+  'CSRF & Session Integrity',
+  'Protocol Downgrade',
+  'Token Theft & Replay',
+  'Infrastructure & Transport',
+];
+const CATEGORY_ICON = {
+  'Redirect & Response Leakage': 'gitbranch',
+  'CSRF & Session Integrity': 'shieldalert',
+  'Protocol Downgrade': 'shieldoff',
+  'Token Theft & Replay': 'keyround',
+  'Infrastructure & Transport': 'server',
+};
+
+const ATTACKS = [
+  { id: 'redirect-uri', name: 'Redirect URI Pattern-Matching Bypass', category: 'Redirect & Response Leakage', severity: 'Critical', attackers: ['A1'], rfc: '\u00A74.1 / \u00A74.1.1',
+    summary: 'Wildcard or prefix-matched redirect_uri registration lets an attacker point the response at a domain they control.',
+    precondition: 'The AS registers redirect_uri as a pattern or wildcard (e.g. https://*.example.com/*) instead of one exact string.',
+    steps: [
+      'Identify a client whose registered redirect URI is a pattern rather than an exact match.',
+      'Craft a redirect_uri the matcher accepts but a human reviewer would not - e.g. https://attacker.tld/.example.com, or a subdomain-takeover host under example.com.',
+      'Send the victim (or drive an unauthenticated flow) to the crafted /authorize URL.',
+      'Harvest the code or token that lands on the attacker-controlled origin.',
+    ],
+    impact: 'Direct exfiltration of authorization codes or access tokens; for public clients this is a straight path to a stolen account.',
+    countermeasure: 'Exact string matching per RFC 3986 \u00A76.2.1 - no patterns, no wildcards. The only sanctioned exception is a variable port on a localhost redirect_uri for native apps.',
+    testerNote: 'Always try a redirect_uri that is a superset of the registered one - extra path segments, extra subdomains. Plenty of \u2018exact match\u2019 implementations are quietly a prefix match.' },
+
+  { id: 'open-redirect-fragment', name: 'Open-Redirector Fragment Reattachment', category: 'Redirect & Response Leakage', severity: 'High', attackers: ['A1'], rfc: '\u00A74.1.2',
+    summary: 'A client-side open redirector combined with a fragment-carrying response leaks tokens even through a narrow, correctly matched redirect_uri.',
+    precondition: 'The registered redirect_uri accepts extra query parameters, one of which is an open redirector; the response type puts tokens in the URL fragment.',
+    steps: [
+      'Confirm the registered redirect_uri accepts arbitrary parameters after its path.',
+      'Locate an open-redirect parameter on that endpoint (e.g. ?redirect_to=).',
+      'Build an authorize request with response_type=token and redirect_uri pointing at the callback plus the open-redirect parameter aimed at attacker infrastructure.',
+      'Let the browser reattach the untouched #access_token=... fragment to the attacker\u2019s Location header - browsers reattach fragments whenever the new Location header doesn\u2019t already carry one.',
+    ],
+    impact: 'Access token lands in an attacker-controlled document, bypassing exact redirect_uri matching entirely.',
+    countermeasure: 'Remove open redirectors from the client, or append a dummy fragment (#_) to every Location header. Better still, use the code response type so nothing valuable ever reaches the fragment.',
+    testerNote: 'The go-to bypass once \u2018exact match is enforced\u2019 shuts down the obvious path - stop looking at the AS and start looking at what the client does after the redirect lands.' },
+
+  { id: 'open-redirect-as', name: 'Authorization Server as Open Redirector', category: 'Redirect & Response Leakage', severity: 'Medium', attackers: ['A1'], rfc: '\u00A74.11.2',
+    summary: 'A correctly registered redirect_uri can still be weaponized for phishing if the AS forwards the browser to it before making a real trust decision.',
+    precondition: 'AS auto-redirects to a registered redirect_uri on an error, on a declined consent, or during a silent (prompt=none) request without weighing whether that URI deserves the traffic.',
+    steps: [
+      'Register a client with a redirect_uri pointing at convincing phishing infrastructure.',
+      'Trigger one of three paths: an intentionally invalid request that still redirects, a valid request the victim declines but is redirected from anyway, or a silent prompt=none request.',
+      'The victim\u2019s browser lands on the phishing page moments after seeing the real AS domain in the address bar - priming trust for whatever comes next.',
+    ],
+    impact: 'A high-credibility phishing launchpad that borrows the authorization server\u2019s own reputation.',
+    countermeasure: 'Authenticate the user first and make a risk-based decision about the redirect_uri before auto-redirecting; when trust is uncertain, interstitial-warn instead of forwarding silently.',
+    testerNote: 'Test the decline path specifically - many AS implementations correctly block bad client_id/redirect_uri pairs but still blindly redirect after a user declines an otherwise-valid request.' },
+
+  { id: 'referer-leak', name: 'Referer-Header Credential Leakage', category: 'Redirect & Response Leakage', severity: 'Medium', attackers: ['A3'], rfc: '\u00A74.2',
+    summary: 'Third-party content or outbound links on the AS or client page leak code / state (and sometimes access_token) via the Referer header.',
+    precondition: 'A post-auth or authorization-endpoint page embeds third-party resources or outbound links, with no Referrer-Policy set.',
+    steps: [
+      'Identify a page rendered after the redirect that includes ads, analytics pixels, or user-generated links.',
+      'Get that page to load third-party content, or get the victim to click an outbound link.',
+      'Capture the Referer header on the receiving end and pull code or state out of the query string.',
+    ],
+    impact: 'Enables authorization code injection, or CSRF if the leaked state isn\u2019t one-time-use.',
+    countermeasure: 'Set Referrer-Policy: no-referrer on both endpoints; invalidate state after first use; invalidate codes on redemption and revoke on double-redeem.',
+    testerNote: 'Check the landing page\u2019s source for ad or analytics tags first - one of the highest hit-rate, lowest-effort findings in an OIDC assessment.' },
+
+  { id: 'history-leak', name: 'Browser-History Credential Leakage', category: 'Redirect & Response Leakage', severity: 'Medium', attackers: ['A3'], rfc: '\u00A74.3',
+    summary: 'Codes in the query string and tokens in query strings or fragments persist in local browser history for anyone with device access.',
+    precondition: 'code or access_token is transported as a URL parameter rather than via a POST body or header.',
+    steps: [
+      'Get local or synced access to the browser\u2019s history - shared device, stolen laptop, or cloud-synced history.',
+      'Pull the callback URL with the code or access_token still attached.',
+      'Replay the code before it expires, or use the token directly.',
+    ],
+    impact: 'Offline replay of short-lived credentials by anyone who later gets the device or its history.',
+    countermeasure: 'Never place access_token in a query parameter; prefer the form_post response mode over a redirect wherever the AS supports it.',
+    testerNote: '\u201CIt\u2019s short-lived\u201D isn\u2019t a rebuttal - corporate device-history sync and screen-recording tooling both defeat that assumption.' },
+
+  { id: 'mixup', name: 'Mix-Up Attack (Multi-AS Confusion)', category: 'CSRF & Session Integrity', severity: 'Critical', attackers: ['A1', 'A2'], rfc: '\u00A74.4',
+    summary: 'A client that talks to more than one AS can be tricked into sending a code or token to an attacker-run AS while the victim actually authenticates at the real one.',
+    precondition: 'The client supports multiple issuers, reuses one redirect_uri across them, and doesn\u2019t record which issuer a given pending request actually went to.',
+    steps: [
+      'Register (or already control) a rogue AS - dynamic client registration makes this trivial.',
+      'Get the victim to start the flow believing they picked the rogue AS, or intercept and swap the selection in transit.',
+      'Have the rogue AS immediately redirect the browser to the real AS, substituting the client\u2019s genuine client_id.',
+      'The victim authenticates normally at the real AS and a legitimate code or token comes back - but the client still believes the flow started with the rogue AS.',
+      'The client redeems the code (or forwards the token) against the rogue AS\u2019s endpoint, handing it straight to the attacker.',
+    ],
+    impact: 'Full code/token exfiltration without ever touching the honest AS\u2019s own infrastructure.',
+    countermeasure: 'Validate the iss authorization-response parameter (RFC 9207) - or the iss claim in an ID Token - against the issuer stored for that specific request. Distinct redirect_uri per issuer is a weaker fallback with a known bypass.',
+    testerNote: 'Any \u201Csign in with provider A / provider B / your own IdP\u201D picker is worth testing here - check whether the client records which issuer per pending session, not just that a session exists.' },
+
+  { id: 'code-injection', name: 'Authorization Code Injection', category: 'CSRF & Session Integrity', severity: 'Critical', attackers: ['A3', 'A1'], rfc: '\u00A74.5',
+    summary: 'An attacker holding a stolen code starts their own OAuth session and swaps in the victim\u2019s code mid-flight, binding the victim\u2019s identity to the attacker\u2019s client session.',
+    precondition: 'A code has leaked by any of the other mechanisms above, and it is not bound to the client instance that requested it.',
+    steps: [
+      'Obtain a valid authorization code belonging to the victim.',
+      'Start a fresh, legitimate-looking OAuth session with the target client from the attacker\u2019s own browser or device.',
+      'Intercept the response on the attacker\u2019s own device and overwrite the freshly issued code with the stolen victim code.',
+      'Let the client redeem that code normally - client_id, redirect_uri and client auth all check out, because they belong to the legitimate flow, not to the stolen code.',
+      'The attacker\u2019s session at the client is now tied to the victim\u2019s account.',
+    ],
+    impact: 'Account takeover / identity binding without ever compromising the AS or needing the client secret.',
+    countermeasure: 'PKCE with S256 (never plain) binds the code to a verifier only the true requester holds. For OIDC clients, the nonce claim in the ID Token works as an alternative - but only if it is checked before any token is used for anything.',
+    testerNote: 'Confirm PKCE is enforced at the token endpoint, not just accepted at /authorize - some ASes happily store code_challenge but never check code_verifier on redemption.' },
+
+  { id: 'token-injection', name: 'Access Token Injection (Implicit Flow)', category: 'CSRF & Session Integrity', severity: 'High', attackers: ['A1'], rfc: '\u00A74.6',
+    summary: 'In pure OAuth implicit flow there is no way to detect a swapped-in access token, because the token itself carries no binding to the transaction.',
+    precondition: 'The client uses response_type=token (or another type issuing an AT straight from the authorization endpoint) without OIDC.',
+    steps: [
+      'Start an implicit-flow session using the correct, attacker-controlled state value.',
+      'Replace the access_token fragment parameter with a stolen or attacker-owned token before the browser lands on the client callback.',
+      'The client accepts the token because state matches its own session - it has no way to know the token itself was swapped.',
+    ],
+    impact: 'The client treats the attacker\u2019s (or another victim\u2019s) token and identity as belonging to the current browser session.',
+    countermeasure: 'Use OpenID Connect and validate at_hash in the ID Token against the access_token - or, better, avoid response types that issue tokens from the authorization endpoint at all, per the BCP\u2019s own recommendation.',
+    testerNote: 'Finding response_type=token or id_token token still in production is a solid finding on its own, independent of how far you can weaponize it in the engagement window.' },
+
+  { id: 'csrf', name: 'Redirection-Endpoint CSRF', category: 'CSRF & Session Integrity', severity: 'Medium', attackers: ['A1'], rfc: '\u00A74.7',
+    summary: 'Forging a request straight to the client\u2019s redirect_uri binds the victim\u2019s browser session to attacker-controlled resources or identity.',
+    precondition: 'The client doesn\u2019t validate a one-time, session-bound state - or doesn\u2019t correctly rely on PKCE/nonce for the same purpose.',
+    steps: [
+      'Start a legitimate OAuth flow as the attacker and capture the resulting callback URL.',
+      'Get the victim\u2019s browser to load that exact callback URL - an img tag, an auto-submitting form, or a plain link.',
+      'The client processes it as if the victim had authorized, since nothing ties the response to the browser that started the request.',
+    ],
+    impact: 'Login CSRF - the victim\u2019s session ends up bound to the attacker\u2019s account, useful for stealing data later written back into "their" account.',
+    countermeasure: 'One-time CSRF state bound to the browser session, or PKCE (after confirming AS support) or the OIDC nonce.',
+    testerNote: 'Test this even on clients that use PKCE - PKCE only provides CSRF protection if the client actually verified PKCE support before relying on it exclusively; graceful-degradation code paths are a common gap.' },
+
+  { id: 'pkce-downgrade', name: 'PKCE Downgrade Attack', category: 'Protocol Downgrade', severity: 'High', attackers: ['A1'], rfc: '\u00A74.8',
+    summary: 'When PKCE is only enforced because code_challenge is present, an attacker can mint a PKCE-free code and hand it to the victim.',
+    precondition: 'The AS enforces PKCE purely by the presence of code_challenge, and the client relies on PKCE instead of state for CSRF protection (or doesn\u2019t check state at all).',
+    steps: [
+      'Start an authorization request on your own device, intercept it locally, and strip the code_challenge parameter entirely.',
+      'The AS issues a code that isn\u2019t bound to any PKCE challenge.',
+      'Redirect the victim\u2019s browser to the resulting authorization response (same delivery mechanism as redirection CSRF).',
+      'The legitimate client redeems the code with its own real code_verifier - the AS has nothing to check it against, so the exchange still succeeds.',
+    ],
+    impact: 'Same outcome as redirection CSRF, even on a client that believes PKCE alone protects it.',
+    countermeasure: 'The AS MUST reject any code_verifier at the token endpoint for a code that was issued without a code_challenge - this closes the gap regardless of client behavior.',
+    testerNote: 'Clean test: request a token with a code_verifier for a code you obtained via a PKCE-less authorize call. If the AS issues tokens anyway, it\u2019s vulnerable regardless of what any individual client does.' },
+
+  { id: 'token-leak-rs', name: 'Access Token Phishing via Counterfeit Resource Server', category: 'Token Theft & Replay', severity: 'High', attackers: ['A1', 'A5'], rfc: '\u00A74.9.1',
+    summary: 'Clients that accept a late-bound (user- or admin-supplied) resource server URL can be pointed at an attacker-run RS that harvests otherwise-valid tokens.',
+    precondition: 'The client is configured at runtime with an RS URL - typical for standardized-API integrations like calendar, email, or open-banking connectors - rather than hard-coded at build time.',
+    steps: [
+      'Stand up a resource server that mimics the expected API surface closely enough not to break the integration.',
+      'Get the target to point their client instance at your RS URL - social engineering, a malicious app-store listing, or DNS tricks.',
+      'The client dutifully sends its access token to your endpoint on every call.',
+      'Reuse the harvested, still-valid token against the real resource server.',
+    ],
+    impact: 'Full resource access under the victim\u2019s identity, without ever touching the authorization server.',
+    countermeasure: 'Audience-restrict access tokens to a specific RS URL (or its certificate fingerprint) so the legitimate RS rejects a token minted for the phishing RS, combined with sender-constraining so a bare bearer token isn\u2019t enough anyway.',
+    testerNote: 'A great target for supply-chain-style engagements - any \u201Cconnect your own X\u201D integration is worth checking for missing audience restriction.' },
+
+  { id: 'refresh-replay', name: 'Refresh Token Replay (Public Clients)', category: 'Token Theft & Replay', severity: 'Critical', attackers: ['A5', 'A1'], rfc: '\u00A74.14',
+    summary: 'A stolen, non-sender-constrained refresh token for a public client mints unlimited fresh access tokens for as long as it stays valid.',
+    precondition: 'A public client (mobile/SPA) holds a long-lived refresh token that is neither sender-constrained (DPoP/mTLS) nor rotated with reuse detection.',
+    steps: [
+      'Exfiltrate the refresh token from local/session storage, a logging pipeline, or an insecure mobile keystore.',
+      'Call the token endpoint directly with grant_type=refresh_token from attacker infrastructure.',
+      'Mint fresh access tokens indefinitely, independent of the legitimate client\u2019s own session state.',
+    ],
+    impact: 'Persistent, silent account access that outlives the original session and survives access-token expiry.',
+    countermeasure: 'Sender-constrain refresh tokens (DPoP/mTLS), or use rotation with reuse detection - a reused, already-rotated refresh token immediately revokes the whole token family.',
+    testerNote: 'Replay the same refresh token twice in a row at the token endpoint. If both calls succeed with no rotation and no revocation, that\u2019s an immediate, high-confidence finding.' },
+
+  { id: 'client-impersonation', name: 'Client Impersonating Resource Owner', category: 'Token Theft & Replay', severity: 'Medium', attackers: ['A1'], rfc: '\u00A74.15',
+    summary: 'If clients can influence their own client_id and it shares a namespace with user sub values, a malicious client can collide with a real user and get treated as that user by a careless resource server.',
+    precondition: 'The AS lets clients pick or influence their own client_id; the RS uses a shared, sub-like namespace and can\u2019t distinguish resource-owner-bound tokens from client-credential tokens.',
+    steps: [
+      'Enumerate or guess a target user\u2019s sub / stable identifier.',
+      'Register a client via self-service or dynamic registration using that value as, or embedded in, the client_id.',
+      'Obtain a client-credentials-style token for that client_id.',
+      'Present it to a resource server that trusts the sub-shaped identifier without checking which grant type produced the token.',
+    ],
+    impact: 'The resource server treats the malicious client as the impersonated end-user.',
+    countermeasure: 'The AS must not let clients influence client_id or any claim that could collide with a genuine sub; where unavoidable, the RS needs a separate, explicit signal for "this token came from a resource-owner grant."',
+    testerNote: 'Specifically worth checking in JWT-access-token deployments that reuse the sub claim across both grant types.' },
+
+  { id: 'clickjacking', name: 'Clickjacking the Authorization / Consent UI', category: 'Infrastructure & Transport', severity: 'Medium', attackers: ['A1'], rfc: '\u00A74.16',
+    summary: 'The login and consent screens can be framed and overlaid to trick the user into approving a broader grant, or typing credentials into an attacker overlay.',
+    precondition: 'The AS is missing frame-busting controls (CSP frame-ancestors / X-Frame-Options) on the authorization, login, consent, or error pages.',
+    steps: [
+      'Frame the authorization endpoint in a near-invisible iframe on an attacker-controlled page.',
+      'Overlay bait UI elements aligned with the real consent buttons - or a fake credential form on top of the real one.',
+      'The victim believes they\u2019re interacting with the decoy page; clicks and keystrokes actually land on the framed AS UI.',
+    ],
+    impact: 'Silent scope escalation on consent, or straightforward credential theft on login.',
+    countermeasure: 'CSP level 2+ with frame-ancestors, backed by X-Frame-Options for older user agents, applied to every page in the authentication and consent path - not just the primary login screen.',
+    testerNote: 'Check every intermediate page individually - MFA prompt, error pages, account picker. Teams often protect only the first login screen and miss the rest.' },
+
+  { id: '307-redirect', name: '307-Redirect Credential Disclosure', category: 'Infrastructure & Transport', severity: 'Medium', attackers: ['A1'], rfc: '\u00A74.12',
+    summary: 'Using HTTP 307 instead of 303 after a credential-bearing POST makes the browser resend the POST body - including the user\u2019s password - straight to the client.',
+    precondition: 'The AS redirects the browser back to the client with a 307 (or another status the browser won\u2019t rewrite to GET) after the login form POST.',
+    steps: [
+      'Observe the login POST at the AS and the status code of the subsequent redirect.',
+      'If 307 (or non-rewriting behavior) is used, the browser resubmits the POST - form body and all - to the client\u2019s redirect_uri.',
+      'A malicious client on the receiving end now has the user\u2019s raw AS credentials, not merely a code or token.',
+    ],
+    impact: 'Full credential disclosure to the client - enough to impersonate the user directly at the AS.',
+    countermeasure: 'Use HTTP 303 See Other specifically, which unambiguously forces a GET on the follow-up request.',
+    testerNote: 'A single curl -v walk through the login flow confirms the status code - cheap check, severe finding if positive.' },
+
+  { id: 'proxy-header', name: 'Reverse-Proxy Header Spoofing', category: 'Infrastructure & Transport', severity: 'Medium', attackers: ['A2'], rfc: '\u00A74.13',
+    summary: 'A TLS-terminating reverse proxy that blindly forwards inbound X-Forwarded-For or client-certificate headers lets an attacker spoof identity or IP-based controls.',
+    precondition: 'The reverse proxy doesn\u2019t strip or overwrite attacker-supplied versions of security-relevant headers before adding its own.',
+    steps: [
+      'Send a request directly to the proxy with a forged X-Forwarded-For (or client-cert) header claiming a trusted value.',
+      'If the proxy appends instead of replacing - or the app trusts the first/last value without validating proxy topology - the forged value is treated as authoritative.',
+      'Bypass IP allow-lists, rate-limit exemptions, or mTLS-derived client identity checks downstream.',
+    ],
+    impact: 'Bypass of network-layer or mTLS-derived trust controls the application assumes came from the proxy.',
+    countermeasure: 'The proxy must sanitize every inbound occurrence of these headers before setting its own trusted value.',
+    testerNote: 'A classic infra check that\u2019s easy to forget in an OAuth-specific assessment because it sits outside the protocol flow itself - worth a line item regardless.' },
+];
+
+/* ================================================================== */
+/*  DATA  - FLOW MAPS (OIDC Core §3)                                     */
+/* ================================================================== */
+const FLOWS = {
+  code: {
+    label: 'Authorization Code Flow', responseType: 'code',
+    blurb: 'Every token is minted at the back-channel token endpoint; the browser only ever sees a short-lived, single-use code. The default choice for anything that can hold a client secret or use PKCE.',
+    steps: [
+      { title: 'Authorization Request', who: 'Client \u2192 browser \u2192 OP',
+        detail: 'Browser is sent to the OP with response_type=code, client_id, redirect_uri, scope=openid\u2026, state, and (should be) a PKCE code_challenge.',
+        example: 'GET /authorize?response_type=code&client_id=app-42\n  &redirect_uri=https://rp.example/cb&scope=openid%20profile\n  &state=x92kd\n  &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM\n  &code_challenge_method=S256',
+        attacks: ['redirect-uri', 'open-redirect-fragment', 'csrf', 'pkce-downgrade'] },
+      { title: 'Authenticate & Consent', who: 'End-user \u2194 OP',
+        detail: 'OP authenticates the end-user (credentials, session cookie, MFA) and, unless pre-consented, renders a scope consent screen.',
+        example: null, attacks: ['clickjacking', 'open-redirect-as', '307-redirect'] },
+      { title: 'Authorization Response', who: 'OP \u2192 browser \u2192 Client',
+        detail: 'Browser is redirected to redirect_uri with code and the echoed state - nothing else of value should appear in this URL.',
+        example: 'HTTP/1.1 303 See Other\nLocation: https://rp.example/cb?code=aXf0k...&state=x92kd',
+        attacks: ['referer-leak', 'history-leak', 'mixup', 'code-injection'] },
+      { title: 'Token Request', who: 'Client \u2192 OP (back-channel)',
+        detail: 'The client calls the token endpoint directly with the code, its own redirect_uri (must match), client authentication, and the PKCE code_verifier.',
+        example: 'POST /token\ngrant_type=authorization_code&code=aXf0k...\n  &redirect_uri=https://rp.example/cb\n  &code_verifier=dBjftJe...&client_id=app-42',
+        attacks: ['code-injection', 'pkce-downgrade'] },
+      { title: 'Token Response', who: 'OP \u2192 Client (back-channel)',
+        detail: 'OP returns id_token, access_token, and - if issued - refresh_token as one JSON body over TLS. None of this ever touches a browser URL.',
+        example: null, attacks: ['refresh-replay'] },
+      { title: 'Resource / UserInfo Request', who: 'Client \u2192 Resource Server',
+        detail: 'The client presents access_token as a bearer credential to the resource server, or to the OIDC UserInfo endpoint.',
+        example: 'GET /userinfo\nAuthorization: Bearer SlAV32hkKG',
+        attacks: ['token-leak-rs', 'client-impersonation'] },
+    ],
+  },
+  implicit: {
+    label: 'Implicit Flow', responseType: 'id_token token | id_token',
+    blurb: 'Every token is returned straight from the authorization endpoint, in the URL fragment - never a back-channel call. The BCP now recommends against this pattern for exactly the reasons in this guide.',
+    steps: [
+      { title: 'Authorization Request', who: 'Client \u2192 browser \u2192 OP',
+        detail: 'response_type=id_token token (or id_token). A nonce is REQUIRED, since there\u2019s no token endpoint to bind a code to.',
+        example: 'GET /authorize?response_type=id_token%20token\n  &client_id=spa-9&redirect_uri=https://rp.example/cb\n  &scope=openid%20profile&state=af0if\n  &nonce=n-0S6_WzA2Mj',
+        attacks: ['redirect-uri', 'open-redirect-fragment', 'csrf'] },
+      { title: 'Authenticate & Consent', who: 'End-user \u2194 OP',
+        detail: 'Identical to the code flow\u2019s authentication and consent step.',
+        example: null, attacks: ['clickjacking', 'open-redirect-as'] },
+      { title: 'Authorization Response', who: 'OP \u2192 browser \u2192 Client',
+        detail: 'id_token, access_token, token_type and state are all returned directly in the fragment. No token endpoint call ever happens.',
+        example: 'HTTP/1.1 303 See Other\nLocation: https://rp.example/cb#access_token=SlAV32hkKG\n  &id_token=eyJ...&token_type=Bearer&state=af0if',
+        attacks: ['referer-leak', 'history-leak', 'token-injection', 'mixup'] },
+      { title: 'Client-Side Validation', who: 'Client JS (in-browser)',
+        detail: 'The RP\u2019s own script parses the fragment and validates the ID Token - nonce, signature, at_hash - entirely inside the browser.',
+        example: null, attacks: ['token-injection'] },
+    ],
+  },
+  hybrid: {
+    label: 'Hybrid Flow', responseType: 'code id_token | code token | code id_token token',
+    blurb: 'Splits the difference: some tokens arrive immediately from the authorization endpoint (front-channel), the rest - including the final, trusted tokens - come from the token endpoint after code redemption.',
+    steps: [
+      { title: 'Authorization Request', who: 'Client \u2192 browser \u2192 OP',
+        detail: 'response_type is one of code id_token, code token, or code id_token token. nonce is REQUIRED for this flow as well.',
+        example: 'GET /authorize?response_type=code%20id_token\n  &client_id=app-42&redirect_uri=https://rp.example/cb\n  &scope=openid%20profile%20email\n  &nonce=n-0S6_WzA2Mj&state=af0if',
+        attacks: ['redirect-uri', 'csrf', 'pkce-downgrade'] },
+      { title: 'Authenticate & Consent', who: 'End-user \u2194 OP',
+        detail: 'Identical to the code flow\u2019s authentication and consent step.',
+        example: null, attacks: ['clickjacking', 'open-redirect-as'] },
+      { title: 'Authorization Response (front-channel)', who: 'OP \u2192 browser \u2192 Client',
+        detail: 'code arrives alongside whatever the response_type promised - id_token and/or access_token - all in the fragment.',
+        example: 'HTTP/1.1 303 See Other\nLocation: https://rp.example/cb#code=SplxlOBe...\n  &id_token=eyJ...&state=af0if',
+        attacks: ['referer-leak', 'history-leak', 'mixup', 'code-injection', 'token-injection'] },
+      { title: 'Front-Channel ID Token Check', who: 'Client JS (in-browser)',
+        detail: 'The RP validates the front-channel ID Token\u2019s c_hash (binds it to the code) and at_hash (binds it to any AT present) before trusting either.',
+        example: null, attacks: ['code-injection'] },
+      { title: 'Token Request', who: 'Client \u2192 OP (back-channel)',
+        detail: 'The client redeems code at the token endpoint exactly as in the authorization code flow, obtaining the flow\u2019s authoritative tokens.',
+        example: null, attacks: ['code-injection'] },
+      { title: 'Token Response', who: 'OP \u2192 Client (back-channel)',
+        detail: 'Final id_token / access_token / refresh_token. The iss and sub in this ID Token must agree with the front-channel one.',
+        example: null, attacks: ['refresh-replay'] },
+    ],
+  },
+};
+
+const FLOW_COMPARISON = [
+  { prop: 'All tokens from the authorization endpoint', code: false, implicit: true, hybrid: false },
+  { prop: 'All tokens from the token endpoint', code: true, implicit: false, hybrid: false },
+  { prop: 'Tokens never touch the browser URL', code: true, implicit: false, hybrid: false },
+  { prop: 'Client can be authenticated', code: true, implicit: false, hybrid: true },
+  { prop: 'Refresh token possible', code: true, implicit: false, hybrid: true },
+  { prop: 'Completes in one round trip', code: false, implicit: true, hybrid: false },
+  { prop: 'Mostly server-to-server communication', code: true, implicit: false, hybrid: 'varies' },
+];
+
+/* ================================================================== */
+/*  DATA  - ID TOKEN VALIDATION CHECKLIST (OIDC Core §3.1.3.7 etc.)      */
+/* ================================================================== */
+const IDTOKEN_CORE = [
+  { id: 'iss', claim: 'iss', check: 'Exact match against the issuer identifier obtained via discovery/config - not just \u201Clooks like the right domain.\u201D',
+    ifSkipped: 'Accepts ID Tokens minted by any OP the client happens to trust the TLS chain for - opens the door to mix-up substitution.' },
+  { id: 'aud', claim: 'aud', check: 'Contains this client\u2019s own client_id as one of the (possibly several) audience values.',
+    ifSkipped: 'Accepts a token minted for a completely different client - classic audience confusion.' },
+  { id: 'azp', claim: 'azp', check: 'If aud has more than one entry, azp must be present and equal to this client\u2019s client_id.',
+    ifSkipped: 'Multi-tenant deployments can hand one client a token really meant to authorize a sibling client.' },
+  { id: 'sig', claim: 'signature / alg', check: 'Signature verified with the OP\u2019s published key for the specific algorithm pinned at registration - never dynamically trust whatever alg header the token itself claims.',
+    ifSkipped: 'Classic \u201Calg confusion\u201D / \u201Calg:none\u201D forgery - letting the token pick its own verification method is an open invitation to mint one.' },
+  { id: 'hmac', claim: 'HS256 key material', check: 'If (and only if) HMAC is the pinned algorithm, the key is this client\u2019s own client_secret, decided at registration - not inferred from the token.',
+    ifSkipped: 'An RS256-issuing OP exposes its RSA public key; if a client can be tricked into HMAC-verifying with that public key as the secret, anyone can forge a token.' },
+  { id: 'exp', claim: 'exp', check: 'Current time is strictly before exp, with only a few minutes of clock-skew leeway.',
+    ifSkipped: 'Expired tokens stay usable indefinitely.' },
+  { id: 'iat', claim: 'iat', check: 'Token was not issued implausibly far in the past relative to when it\u2019s being presented.',
+    ifSkipped: 'Widens the replay window that nonce-tracking is supposed to bound.' },
+  { id: 'nonce', claim: 'nonce', check: 'Present and equal to the value this client generated for this specific request, whenever a nonce was sent - checked before any token is used for anything.',
+    ifSkipped: 'Authorization code injection becomes undetectable (see catalog).' },
+  { id: 'acr', claim: 'acr', check: 'If a specific acr was requested, the returned value is actually the one asked for, not merely present.',
+    ifSkipped: 'Silent downgrade - e.g. an MFA-required flow silently satisfied by a password-only login.' },
+  { id: 'authtime', claim: 'auth_time / max_age', check: 'If max_age (or a specific auth_time) was requested, the client actually forces re-authentication when the gap is too large - not just logs it.',
+    ifSkipped: 'Stale sessions get treated as freshly authenticated for step-up-sensitive actions.' },
+];
+const IDTOKEN_FLOWSPECIFIC = [
+  { id: 'athash', claim: 'at_hash', check: 'Required whenever an access_token comes back alongside the ID Token from the same endpoint (implicit id_token token, hybrid code id_token token). Recompute and compare.',
+    ifSkipped: 'Access Token Injection goes undetected - the attacker swaps the AT, and the ID Token still \u2018matches\u2019 via state alone.' },
+  { id: 'chash', claim: 'c_hash', check: 'Required whenever a code comes back alongside an ID Token from the authorization endpoint (hybrid flows). Recompute and compare.',
+    ifSkipped: 'A swapped authorization code is never cross-checked against the ID Token that\u2019s supposed to vouch for it.' },
+];
+
+/* ================================================================== */
+/*  DATA  - PENTEST CHECKLIST (RFC 9700 §2 Best Practices)               */
+/* ================================================================== */
+const PENTEST_CHECKLIST = [
+  { category: 'Redirect URI Handling', icon: 'gitbranch', items: [
+    { id: 'redir-0', text: 'Redirect URIs are matched with exact string comparison - no prefix, wildcard, or pattern matching (localhost port variance allowed only for native apps).', ref: '\u00A72.1 \u00B7 MUST' },
+    { id: 'redir-1', text: 'Neither the client nor the AS exposes an endpoint that forwards to an arbitrary attacker-supplied URL (open redirector).', ref: '\u00A72.1 / \u00A74.11 \u00B7 MUST NOT' },
+    { id: 'redir-2', text: 'No redirect_uri uses plain http, except the native-app loopback exception.', ref: '\u00A72.6 \u00B7 MUST NOT' },
+    { id: 'redir-3', text: 'The AS makes a risk-based trust decision before auto-redirecting to a registered redirect_uri on error, decline, or silent-auth paths.', ref: '\u00A74.11.2 \u00B7 SHOULD' },
+  ]},
+  { category: 'CSRF & State Integrity', icon: 'shieldalert', items: [
+    { id: 'csrf-0', text: 'Every redirection-endpoint request is protected by state, PKCE, or OIDC nonce - verified to actually be checked, not merely present.', ref: '\u00A72.1 / \u00A74.7.1 \u00B7 MUST' },
+    { id: 'csrf-1', text: 'If state also carries application data, its integrity is protected against tampering and swapping (signed, encrypted, or session-bound).', ref: '\u00A74.7.1 \u00B7 MUST' },
+    { id: 'csrf-2', text: 'state / nonce is single-use and invalidated immediately after first use at the redirection endpoint.', ref: '\u00A74.2.4 \u00B7 SHOULD' },
+  ]},
+  { category: 'PKCE', icon: 'lock', items: [
+    { id: 'pkce-0', text: 'Public clients use PKCE with S256 - never the plain method.', ref: '\u00A72.1.1 \u00B7 MUST' },
+    { id: 'pkce-1', text: 'The AS enforces code_verifier at the token endpoint whenever code_challenge was present at issuance, and rejects any code_verifier when it was not (downgrade defense).', ref: '\u00A74.8.2 \u00B7 MUST' },
+    { id: 'pkce-2', text: 'The AS advertises PKCE support (e.g. code_challenge_methods_supported) so clients can confirm it before relying on it for CSRF protection.', ref: '\u00A74.7.1 \u00B7 MUST' },
+  ]},
+  { category: 'Multi-Issuer / Mix-Up Defenses', icon: 'arrowrightleft', items: [
+    { id: 'mix-0', text: 'If the client can talk to more than one AS, it records which issuer each pending request was sent to, and validates the iss response parameter (RFC 9207) against it.', ref: '\u00A74.4.2.1 \u00B7 MUST' },
+    { id: 'mix-1', text: 'Where distinct-redirect-uri-per-issuer is used instead, the known bypass (attacker re-registering with the honest AS using the client\u2019s assigned URI) has been considered.', ref: '\u00A74.4.2.2 \u00B7 note' },
+  ]},
+  { category: 'Token Issuance & Handling', icon: 'keyround', items: [
+    { id: 'tok-0', text: 'Response types that hand out access tokens directly from the authorization endpoint (implicit, etc.) are avoided in favor of code-based flows.', ref: '\u00A72.1.2 \u00B7 SHOULD NOT' },
+    { id: 'tok-1', text: 'Access tokens are never placed in a URL query parameter.', ref: '\u00A74.3.2 \u00B7 MUST NOT' },
+    { id: 'tok-2', text: 'Access (and refresh) tokens are sender-constrained - DPoP or mTLS - wherever the deployment can support it.', ref: '\u00A72.2.1 \u00B7 SHOULD' },
+    { id: 'tok-3', text: 'Access tokens are audience-restricted to the specific resource server(s) they\u2019re meant for.', ref: '\u00A72.3 \u00B7 SHOULD' },
+  ]},
+  { category: 'Refresh Tokens', icon: 'refreshcw', items: [
+    { id: 'rt-0', text: 'Public-client refresh tokens are sender-constrained or rotated with reuse (breach) detection.', ref: '\u00A72.2.2 / \u00A74.14.2 \u00B7 MUST' },
+    { id: 'rt-1', text: 'Refresh tokens are bound to the scope/resource set actually consented to.', ref: '\u00A74.14.2 \u00B7 MUST' },
+    { id: 'rt-2', text: 'Refresh tokens expire after client inactivity, and are revoked on security events like password change or logout.', ref: '\u00A74.14.2 \u00B7 SHOULD / MAY' },
+  ]},
+  { category: 'Client Authentication & Registration', icon: 'fingerprint', items: [
+    { id: 'auth-0', text: 'The Resource Owner Password Credentials grant is not present anywhere in the deployment.', ref: '\u00A72.4 \u00B7 MUST NOT' },
+    { id: 'auth-1', text: 'Confidential clients authenticate with an asymmetric method (private_key_jwt or mTLS) rather than a shared secret where feasible.', ref: '\u00A72.5 \u00B7 RECOMMENDED' },
+    { id: 'auth-2', text: 'Clients cannot influence their own client_id, or any claim that could collide with a genuine user sub.', ref: '\u00A74.15.1 \u00B7 SHOULD NOT' },
+  ]},
+  { category: 'Transport & Response Delivery', icon: 'server', items: [
+    { id: 'trans-0', text: 'Login redirects that may carry credentials use HTTP 303, never 307.', ref: '\u00A74.12 \u00B7 MUST NOT' },
+    { id: 'trans-1', text: 'A no-referrer Referrer-Policy is set on the authorization endpoint and any post-auth landing page.', ref: '\u00A74.2.4 \u00B7 recommended' },
+    { id: 'trans-2', text: 'CORS is not enabled on the authorization endpoint itself (only on endpoints the client calls directly - token, userinfo, jwks).', ref: '\u00A72.6 \u00B7 MUST NOT' },
+  ]},
+  { category: 'UI & Infrastructure Hardening', icon: 'shieldcheck', items: [
+    { id: 'ui-0', text: 'CSP frame-ancestors and X-Frame-Options are set on every page in the login/consent/error path, not just the first screen.', ref: '\u00A74.16 \u00B7 MUST / SHOULD' },
+    { id: 'ui-1', text: 'Any TLS-terminating reverse proxy strips or overwrites inbound copies of security-relevant headers (X-Forwarded-For, client-cert headers) before adding its own.', ref: '\u00A74.13 \u00B7 MUST' },
+  ]},
+];
+
+/* ================================================================== */
+/*  APP-LEVEL (persists across tab switches)                            */
+/* ================================================================== */
+const appState = { activeTab: 'model', expandedCatalogId: null };
+
+const TABS = [
+  { id: 'model', label: 'Attacker Model', icon: 'users' },
+  { id: 'flows', label: 'Flow Maps', icon: 'gitbranch' },
+  { id: 'catalog', label: 'Attack Catalog', icon: 'bug' },
+  { id: 'idtoken', label: 'ID Token Checks', icon: 'fingerprint' },
+  { id: 'checklist', label: 'Engagement Checklist', icon: 'listchecks' },
+];
+
+function initHeader() {
+  document.getElementById('hdr-icon').innerHTML = icon('radio', 15, COLORS.cyber);
+  const stats = [
+    [String(ATTACKS.length), 'attack patterns'],
+    ['5', 'attacker classes'],
+    ['3', 'auth flows'],
+    ['12', 'ID Token checks'],
+    [String(PENTEST_CHECKLIST.reduce((n, g) => n + g.items.length, 0)), 'checklist items'],
+  ];
+  document.getElementById('stats-row').innerHTML = stats.map(function (s) {
+    return '<div class="stat-chip"><b>' + s[0] + '</b><span>' + s[1] + '</span></div>';
+  }).join('');
+}
+
+function initTabNav() {
+  const nav = document.getElementById('tabnav');
+  nav.innerHTML = TABS.map(function (t) {
+    return '<button class="tab-btn" data-tab="' + t.id + '">' + icon(t.icon, 14) + '<span>' + t.label + '</span></button>';
+  }).join('');
+  nav.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { switchTab(btn.getAttribute('data-tab')); });
+  });
+  updateTabNavUI();
+}
+function updateTabNavUI() {
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === appState.activeTab);
+  });
+}
+
+function switchTab(tabId) {
+  appState.activeTab = tabId;
+  updateTabNavUI();
+  const main = document.getElementById('main-content');
+  main.innerHTML = '';
+  if (tabId === 'model') renderAttackerModel(main);
+  else if (tabId === 'flows') renderFlowMaps(main);
+  else if (tabId === 'catalog') renderCatalog(main);
+  else if (tabId === 'idtoken') renderIdToken(main);
+  else if (tabId === 'checklist') renderPentestChecklist(main);
+}
+
+function jumpToAttack(id) {
+  appState.expandedCatalogId = id;
+  switchTab('catalog');
+  setTimeout(function () {
+    const el = document.getElementById('atk-' + id);
+    if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
+}
+
+function sectionHeading(eyebrow, title, sub) {
+  return '' +
+    '<div class="section-heading">' +
+      '<div class="section-eyebrow">' + esc(eyebrow) + '</div>' +
+      '<h2 class="section-title">' + title + '</h2>' +
+      (sub ? '<p class="section-sub">' + sub + '</p>' : '') +
+    '</div>';
+}
+
+/* ================================================================== */
+/*  TAB 1  - ATTACKER MODEL                                              */
+/* ================================================================== */
+function renderAttackerModel(container) {
+  let html = sectionHeading(
+    'RFC 9700 \u00A73',
+    'The Updated Attacker Model',
+    'Every attack in the catalog is tagged against these five capabilities. Before you test anything, know which attacker you\u2019re emulating - it determines what\u2019s actually in scope for a given finding.'
+  );
+  html += '<div class="attacker-grid">';
+  ATTACKERS.forEach(function (a) {
+    html += '' +
+      '<div class="attacker-card">' +
+        '<div class="attacker-top">' +
+          '<div class="attacker-icon-wrap">' + icon(a.icon, 17) + '</div>' +
+          '<div><div class="attacker-id">' + a.id + '</div><div class="attacker-name">' + esc(a.name) + '</div></div>' +
+        '</div>' +
+        '<div class="attacker-tagline">' + esc(a.tagline) + '</div>' +
+        '<p class="attacker-detail">' + a.detail + '</p>' +
+        '<div class="attacker-example">' + a.example + '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+/* ================================================================== */
+/*  TAB 2  - FLOW MAPS                                                   */
+/* ================================================================== */
+function renderFlowMaps(container) {
+  const local = { flowKey: 'code', attackerView: false, selected: 0 };
+
+  function cellMark(v) {
+    if (v === true) return '<span class="yes">' + icon('checkcircle2', 15) + '</span>';
+    if (v === false) return '<span class="no">' + icon('x', 15) + '</span>';
+    return '<span class="varies">varies</span>';
+  }
+
+  function draw() {
+    const flow = FLOWS[local.flowKey];
+    const step = flow.steps[local.selected];
+
+    let html = sectionHeading(
+      'OIDC Core \u00A73',
+      'Flow Maps',
+      'Each hop is a place a request or response physically travels through - and therefore a place an attacker can sit. Toggle attacker view to see which hops in this flow carry live attack surface, then click a hop for detail.'
+    );
+
+    html += '<div class="flow-toprow">';
+    html += '<div class="chip-row" id="flow-chip-row">';
+    Object.keys(FLOWS).forEach(function (k) {
+      html += '<button class="chip flow-chip" data-flow="' + k + '" style="' + (local.flowKey === k ? 'border-color:' + COLORS.cyber + ';background:rgba(109,155,255,0.12);color:' + COLORS.cyber + ';' : '') + '">' + FLOWS[k].label + '</button>';
+    });
+    html += '</div>';
+    html += '<button class="attacker-view-btn' + (local.attackerView ? ' on' : '') + '" id="attacker-view-toggle">' + icon(local.attackerView ? 'eye' : 'eyeoff', 13) + '<span>ATTACKER VIEW ' + (local.attackerView ? 'ON' : 'OFF') + '</span></button>';
+    html += '</div>';
+
+    html += '<p class="flow-blurb">' + flow.blurb + ' <span class="rt">response_type=' + esc(flow.responseType) + '</span></p>';
+
+    html += '<div class="flow-rail" id="flow-rail">';
+    flow.steps.forEach(function (s, i) {
+      const hasAttacks = s.attacks && s.attacks.length > 0;
+      const flagged = local.attackerView && hasAttacks;
+      const isSel = i === local.selected;
+      html += '<div class="flow-step-wrap">';
+      html += '<button class="flow-step-btn" data-step="' + i + '">';
+      html += '<div class="step-circle' + (isSel ? ' selected' : (flagged ? ' flagged' : '')) + '">' + (i + 1) + '</div>';
+      html += '<div class="step-label' + (isSel ? ' selected' : '') + '">' + esc(s.title) + '</div>';
+      html += '</button>';
+      if (i < flow.steps.length - 1) html += '<span class="flow-arrow">' + icon('arrowright', 14) + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '<div class="step-detail">';
+    html += '<div class="step-detail-who">' + esc(step.who) + '</div>';
+    html += '<div class="step-detail-title">' + esc(step.title) + '</div>';
+    html += '<p class="step-detail-text">' + step.detail + '</p>';
+    if (step.example) html += '<pre class="step-example">' + esc(step.example) + '</pre>';
+    if (step.attacks && step.attacks.length) {
+      html += '<div class="step-attacks-label">Attack surface at this hop</div><div class="chip-row">';
+      step.attacks.forEach(function (aid) {
+        const atk = ATTACKS.find(function (a) { return a.id === aid; });
+        if (!atk) return;
+        html += '<button class="step-attack-chip" data-jump="' + aid + '"><span class="step-attack-dot" style="background:' + SEV_COLOR[atk.severity] + '"></span>' + esc(atk.name) + icon('chevronright', 12, COLORS.muted) + '</button>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="compare-wrap"><div class="compare-label">Flow comparison</div>';
+    html += '<table class="compare"><thead><tr><th>Property</th><th>Code</th><th>Implicit</th><th>Hybrid</th></tr></thead><tbody>';
+    FLOW_COMPARISON.forEach(function (row) {
+      html += '<tr><td>' + esc(row.prop) + '</td><td>' + cellMark(row.code) + '</td><td>' + cellMark(row.implicit) + '</td><td>' + cellMark(row.hybrid) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    container.innerHTML = html;
+    wire();
+  }
+
+  function wire() {
+    container.querySelectorAll('.flow-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        local.flowKey = btn.getAttribute('data-flow');
+        local.selected = 0;
+        draw();
+      });
+    });
+    const avToggle = document.getElementById('attacker-view-toggle');
+    if (avToggle) avToggle.addEventListener('click', function () { local.attackerView = !local.attackerView; draw(); });
+    container.querySelectorAll('.flow-step-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { local.selected = parseInt(btn.getAttribute('data-step'), 10); draw(); });
+    });
+    container.querySelectorAll('[data-jump]').forEach(function (btn) {
+      btn.addEventListener('click', function () { jumpToAttack(btn.getAttribute('data-jump')); });
+    });
+  }
+
+  draw();
+}
+
+/* ================================================================== */
+/*  TAB 3  - ATTACK CATALOG                                              */
+/* ================================================================== */
+function renderCatalog(container) {
+  const local = { search: '', cats: [], sevs: [] };
+
+  function filtered() {
+    return ATTACKS.filter(function (a) {
+      if (local.cats.length && local.cats.indexOf(a.category) === -1) return false;
+      if (local.sevs.length && local.sevs.indexOf(a.severity) === -1) return false;
+      if (local.search.trim()) {
+        const q = local.search.toLowerCase();
+        const hay = (a.name + ' ' + a.summary + ' ' + a.testerNote + ' ' + a.category).toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function fieldLabel(iconName, color, text) {
+    return '<div class="field-label" style="' + (color ? 'color:' + color : '') + '">' + icon(iconName, 12, color) + text + '</div>';
+  }
+
+  function renderResults() {
+    const list = filtered();
+    const resultsEl = document.getElementById('catalog-results');
+    if (!list.length) {
+      resultsEl.innerHTML = '<div class="catalog-empty">No attacks match those filters.</div>';
+      return;
+    }
+    let html = '<div class="catalog-list">';
+    list.forEach(function (a) {
+      const isOpen = appState.expandedCatalogId === a.id;
+      const sevColor = SEV_COLOR[a.severity];
+      html += '<div class="catalog-card" id="atk-' + a.id + '" style="border-left:3px solid ' + sevColor + ';' + (isOpen ? 'border-color:' + sevColor + '66' : '') + '">';
+      html += '<button class="catalog-card-header" data-toggle="' + a.id + '">';
+      html += '<span class="cat-icon">' + icon(CATEGORY_ICON[a.category], 16) + '</span>';
+      html += '<div style="flex:1;min-width:0">';
+      html += '<div class="catalog-card-title-row"><span class="catalog-card-name">' + esc(a.name) + '</span>';
+      html += '<span class="severity-pill" style="color:' + sevColor + ';border:1px solid ' + sevColor + '55;background:' + sevColor + '14"><span class="severity-dot" style="background:' + sevColor + '"></span>' + a.severity + '</span></div>';
+      html += '<div class="catalog-card-summary">' + esc(a.summary) + '</div></div>';
+      html += '<div class="catalog-card-attackers">' + a.attackers.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>';
+      html += '<span class="catalog-chevron' + (isOpen ? ' open' : '') + '">' + icon('chevrondown', 16) + '</span>';
+      html += '</button>';
+
+      html += '<div class="catalog-card-body' + (isOpen ? '' : ' hidden') + '" id="body-' + a.id + '">';
+      html += '<div class="badge-row"><span class="ref-badge">' + a.rfc + '</span><span class="cat-name">' + esc(a.category) + '</span></div>';
+      html += '<div>' + fieldLabel('info', null, 'Precondition') + '<p class="field-p">' + esc(a.precondition) + '</p></div>';
+      html += '<div>' + fieldLabel('crosshair', null, 'Exploitation Steps') + '<ol class="steps-list">' + a.steps.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol></div>';
+      html += '<div>' + fieldLabel('alerttriangle', COLORS.crit, 'Impact') + '<p class="field-p">' + esc(a.impact) + '</p></div>';
+      html += '<div>' + fieldLabel('shieldcheck', COLORS.cyber, 'Countermeasure') + '<p class="field-p">' + esc(a.countermeasure) + '</p></div>';
+      html += '<div class="tester-note-box">' + fieldLabel('bug', COLORS.low, 'Tester\u2019s Note') + '<p class="field-p">' + esc(a.testerNote) + '</p></div>';
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    resultsEl.innerHTML = html;
+
+    resultsEl.querySelectorAll('[data-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const id = btn.getAttribute('data-toggle');
+        appState.expandedCatalogId = appState.expandedCatalogId === id ? null : id;
+        renderResults();
+        if (appState.expandedCatalogId === id) {
+          const el = document.getElementById('atk-' + id);
+          if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    });
+  }
+
+  function refreshChipStyles() {
+    container.querySelectorAll('.cat-chip').forEach(function (btn) {
+      const c = btn.getAttribute('data-cat');
+      const active = local.cats.indexOf(c) !== -1;
+      btn.style.borderColor = active ? COLORS.cyber : COLORS.border;
+      btn.style.background = active ? 'rgba(109,155,255,0.12)' : 'transparent';
+      btn.style.color = active ? COLORS.cyber : COLORS.paperDim;
+    });
+    container.querySelectorAll('.sev-chip').forEach(function (btn) {
+      const s = btn.getAttribute('data-sev');
+      const active = local.sevs.indexOf(s) !== -1;
+      const col = SEV_COLOR[s];
+      btn.style.borderColor = active ? col : COLORS.border;
+      btn.style.background = active ? col + '22' : 'transparent';
+      btn.style.color = active ? col : COLORS.paperDim;
+    });
+    const clearBtn = document.getElementById('clear-filters-btn');
+    if (clearBtn) clearBtn.style.display = (local.cats.length || local.sevs.length) ? 'inline-flex' : 'none';
+  }
+
+  let html = sectionHeading(
+    'RFC 9700 \u00A74',
+    'Attack Catalog',
+    ATTACKS.length + ' documented attack patterns, each with preconditions, exploitation steps, impact, the spec\u2019s own countermeasure, and a tester\u2019s note on what teams actually get wrong.'
+  );
+
+  html += '<div class="search-bar">' + icon('search', 15, COLORS.muted) +
+    '<input type="text" id="catalog-search" placeholder="Search attacks, techniques, tester notes\u2026" />' +
+    '<button class="search-clear" id="catalog-search-clear" style="display:none">' + icon('x', 14) + '</button></div>';
+
+  html += '<div class="filters-block chip-row">';
+  CATEGORIES.forEach(function (c) {
+    html += '<button class="chip cat-chip" data-cat="' + esc(c) + '">' + esc(c) + '</button>';
+  });
+  html += '</div>';
+
+  html += '<div class="filters-block chip-row">';
+  Object.keys(SEV_COLOR).forEach(function (s) {
+    html += '<button class="chip sev-chip" data-sev="' + s + '">' + s + '</button>';
+  });
+  html += '<button class="clear-filters" id="clear-filters-btn" style="display:none">' + icon('rotateccw', 11) + 'clear filters</button>';
+  html += '</div>';
+
+  html += '<div id="catalog-results"></div>';
+
+  container.innerHTML = html;
+
+  const searchInput = document.getElementById('catalog-search');
+  const clearIcon = document.getElementById('catalog-search-clear');
+  searchInput.addEventListener('input', function () {
+    local.search = searchInput.value;
+    clearIcon.style.display = local.search ? 'flex' : 'none';
+    renderResults();
+  });
+  clearIcon.addEventListener('click', function () {
+    local.search = '';
+    searchInput.value = '';
+    clearIcon.style.display = 'none';
+    searchInput.focus();
+    renderResults();
+  });
+
+  container.querySelectorAll('.cat-chip').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const c = btn.getAttribute('data-cat');
+      const idx = local.cats.indexOf(c);
+      if (idx === -1) local.cats.push(c); else local.cats.splice(idx, 1);
+      refreshChipStyles();
+      renderResults();
+    });
+  });
+  container.querySelectorAll('.sev-chip').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const s = btn.getAttribute('data-sev');
+      const idx = local.sevs.indexOf(s);
+      if (idx === -1) local.sevs.push(s); else local.sevs.splice(idx, 1);
+      refreshChipStyles();
+      renderResults();
+    });
+  });
+  document.getElementById('clear-filters-btn').addEventListener('click', function () {
+    local.cats = []; local.sevs = [];
+    refreshChipStyles();
+    renderResults();
+  });
+
+  refreshChipStyles();
+  renderResults();
+
+  if (appState.expandedCatalogId) {
+    setTimeout(function () {
+      const el = document.getElementById('atk-' + appState.expandedCatalogId);
+      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  }
+}
+
+/* ================================================================== */
+/*  TAB 4  - ID TOKEN VALIDATION CHECKLIST                               */
+/* ================================================================== */
+function renderIdToken(container) {
+  const all = IDTOKEN_CORE.concat(IDTOKEN_FLOWSPECIFIC);
+  let checked = {};
+
+  function updateProgress() {
+    const fillEl = document.getElementById('idt-progress-fill');
+    if (!fillEl) return; /* tab was switched away before this ran */
+    const done = all.filter(function (c) { return checked[c.id]; }).length;
+    fillEl.style.width = (done / all.length * 100) + '%';
+    document.getElementById('idt-progress-text').textContent = done + ' / ' + all.length + ' reviewed';
+    const resetBtn = document.getElementById('idt-reset-btn');
+    if (resetBtn) resetBtn.style.display = done > 0 ? 'inline-flex' : 'none';
+  }
+
+  function rowHtml(item, n) {
+    const isChecked = !!checked[item.id];
+    return '' +
+      '<div class="check-row' + (isChecked ? ' checked' : '') + '" id="idt-row-' + item.id + '">' +
+        '<button class="check-row-btn" data-idt="' + item.id + '">' + icon(isChecked ? 'checkcircle2' : 'circle', 19) + '</button>' +
+        '<div class="check-row-body">' +
+          '<div class="check-row-head"><span class="check-row-num">' + String(n).padStart(2, '0') + '</span><span class="check-row-claim">' + esc(item.claim) + '</span></div>' +
+          '<p class="check-row-text">' + esc(item.check) + '</p>' +
+          '<div class="check-row-warn">' + icon('alerttriangle', 12, COLORS.crit) + '<p><span class="lbl">if skipped: </span>' + esc(item.ifSkipped) + '</p></div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function toggle(id) {
+    checked[id] = !checked[id];
+    const row = document.getElementById('idt-row-' + id);
+    row.classList.toggle('checked', !!checked[id]);
+    row.querySelector('.check-row-btn').innerHTML = icon(checked[id] ? 'checkcircle2' : 'circle', 19);
+    updateProgress();
+  }
+
+  let html = sectionHeading(
+    'OIDC Core \u00A73.1.3.7',
+    'ID Token Validation Checks',
+    'This is the checklist every relying party must run before trusting an ID Token - and the one place a missed step converts a spec-compliant OP into a fully exploitable RP. Walk it against the target implementation.'
+  );
+
+  html += '<div class="progress-row">' +
+    '<div class="progress-track"><div class="progress-fill" id="idt-progress-fill" style="width:0%"></div></div>' +
+    '<span class="progress-text" id="idt-progress-text">0 / ' + all.length + ' reviewed</span>' +
+    '<button class="reset-btn" id="idt-reset-btn" style="display:none">' + icon('rotateccw', 11) + 'reset</button>' +
+  '</div>';
+
+  html += '<div class="group-label">Core checks - every flow</div><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:26px">';
+  IDTOKEN_CORE.forEach(function (c, i) { html += rowHtml(c, i + 1); });
+  html += '</div>';
+
+  html += '<div class="group-label">Flow-specific checks - implicit &amp; hybrid</div><div style="display:flex;flex-direction:column;gap:8px">';
+  IDTOKEN_FLOWSPECIFIC.forEach(function (c, i) { html += rowHtml(c, IDTOKEN_CORE.length + i + 1); });
+  html += '</div>';
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('[data-idt]').forEach(function (btn) {
+    btn.addEventListener('click', function () { toggle(btn.getAttribute('data-idt')); });
+  });
+  document.getElementById('idt-reset-btn').addEventListener('click', function () {
+    checked = {};
+    all.forEach(function (c) {
+      const row = document.getElementById('idt-row-' + c.id);
+      row.classList.remove('checked');
+      row.querySelector('.check-row-btn').innerHTML = icon('circle', 19);
+    });
+    updateProgress();
+  });
+
+  updateProgress();
+}
+
+/* ================================================================== */
+/*  TAB 5  - PENTEST / ENGAGEMENT CHECKLIST                              */
+/* ================================================================== */
+function renderPentestChecklist(container) {
+  let checked = {};
+  const collapsed = {};
+  const totalItems = PENTEST_CHECKLIST.reduce(function (n, g) { return n + g.items.length; }, 0);
+
+  function updateProgress() {
+    const fillEl = document.getElementById('pt-progress-fill');
+    if (!fillEl) return; /* tab was switched away before this ran */
+    const done = PENTEST_CHECKLIST.reduce(function (n, g) { return n + g.items.filter(function (it) { return checked[it.id]; }).length; }, 0);
+    fillEl.style.width = (done / totalItems * 100) + '%';
+    document.getElementById('pt-progress-text').textContent = done + ' / ' + totalItems + ' verified';
+    const resetBtn = document.getElementById('pt-reset-btn');
+    if (resetBtn) resetBtn.style.display = done > 0 ? 'inline-flex' : 'none';
+    PENTEST_CHECKLIST.forEach(function (g) {
+      const groupDone = g.items.filter(function (it) { return checked[it.id]; }).length;
+      const countEl = document.getElementById('pt-count-' + slug(g.category));
+      if (countEl) {
+        countEl.textContent = groupDone + '/' + g.items.length;
+        countEl.classList.toggle('done', groupDone === g.items.length);
+      }
+    });
+  }
+
+  function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+
+  function itemHtml(it) {
+    const isChecked = !!checked[it.id];
+    return '' +
+      '<div class="pt-item' + (isChecked ? ' checked' : '') + '" id="pt-item-' + it.id + '">' +
+        '<button class="pt-item-btn" data-pt="' + it.id + '">' + icon(isChecked ? 'checkcircle2' : 'circle', 17) + '</button>' +
+        '<div class="pt-item-text">' + esc(it.text) + '</div>' +
+        '<span class="ref-badge">' + it.ref + '</span>' +
+      '</div>';
+  }
+
+  function toggle(id) {
+    checked[id] = !checked[id];
+    const row = document.getElementById('pt-item-' + id);
+    row.classList.toggle('checked', !!checked[id]);
+    row.querySelector('.pt-item-btn').innerHTML = icon(checked[id] ? 'checkcircle2' : 'circle', 17);
+    updateProgress();
+  }
+
+  let html = sectionHeading(
+    'RFC 9700 \u00A72',
+    'Engagement Checklist',
+    'The BCP\u2019s own best-practice list, reorganized as testable assertions. Work through it category by category during a live assessment.'
+  );
+
+  html += '<div class="progress-row">' +
+    '<div class="progress-track"><div class="progress-fill amber" id="pt-progress-fill" style="width:0%"></div></div>' +
+    '<span class="progress-text" id="pt-progress-text">0 / ' + totalItems + ' verified</span>' +
+    '<button class="reset-btn" id="pt-reset-btn" style="display:none">' + icon('rotateccw', 11) + 'reset</button>' +
+  '</div>';
+
+  PENTEST_CHECKLIST.forEach(function (g) {
+    const gs = slug(g.category);
+    html += '<div class="pt-group">';
+    html += '<button class="pt-group-header" data-group="' + gs + '">' +
+      icon(g.icon, 16, COLORS.high) +
+      '<span class="pt-group-title">' + esc(g.category) + '</span>' +
+      '<span class="pt-group-count" id="pt-count-' + gs + '">0/' + g.items.length + '</span>' +
+      '<span class="pt-group-chevron open" id="pt-chevron-' + gs + '">' + icon('chevrondown', 15) + '</span>' +
+    '</button>';
+    html += '<div class="pt-group-body" id="pt-body-' + gs + '">';
+    g.items.forEach(function (it) { html += itemHtml(it); });
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('[data-pt]').forEach(function (btn) {
+    btn.addEventListener('click', function () { toggle(btn.getAttribute('data-pt')); });
+  });
+  container.querySelectorAll('[data-group]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const gs = btn.getAttribute('data-group');
+      collapsed[gs] = !collapsed[gs];
+      document.getElementById('pt-body-' + gs).classList.toggle('hidden', !!collapsed[gs]);
+      document.getElementById('pt-chevron-' + gs).classList.toggle('open', !collapsed[gs]);
+    });
+  });
+  document.getElementById('pt-reset-btn').addEventListener('click', function () {
+    checked = {};
+    PENTEST_CHECKLIST.forEach(function (g) {
+      g.items.forEach(function (it) {
+        const row = document.getElementById('pt-item-' + it.id);
+        row.classList.remove('checked');
+        row.querySelector('.pt-item-btn').innerHTML = icon('circle', 17);
+      });
+    });
+    updateProgress();
+  });
+
+  updateProgress();
+}
+
+/* ================================================================== */
+/*  BOOT                                                                */
+/* ================================================================== */
+initHeader();
+initTabNav();
+switchTab('model');
+</script>
+</body>
+</html>
