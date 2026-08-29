@@ -130,7 +130,7 @@ subject demands it, but nav, rules, and body text stay on these tokens.
   source inline or in the reference list. Numbers chosen to make an example concrete
   are illustrations and should be visibly marked as such. Mixing the two without
   distinction is the failure mode that matters, because the reader cannot tell them
-  apart on their own.
+  apart on their own. 
 - **Don't invent specifics a reader will go looking for.** Internal codenames,
   product families, distillation lineages, per-token prices, percentage attributions
   for a company's internal gains. If an example needs a name, make it obviously
@@ -138,14 +138,14 @@ subject demands it, but nav, rules, and body text stay on these tokens.
   the page says it's hypothetical.
 - **State limits.** If the material doesn't support a claim, don't make it. Absence
   of evidence gets its own treatment, not silence.
-- **Show the formula.** Where the page computes something - cost, cache size,
-  speedup, goodput, blast radius - put the expression on screen in a mono block next
-  to the control. An interactive number with a hidden formula is an assertion wearing
+- **Show the formula (on hovering).** Where the page computes something - cost, cache size,
+  speedup, goodput, blast radius - show the expression on screen (on hovering) in a mono block below
+  the control. An interactive number with a hidden formula is an assertion wearing
   a costume.
 - **No medical advice.** Biology pages describe mechanism. Dosing, safety, and
   treatment decisions belong with a clinician, and the page says so.
 
-### Source readings additionally
+### Source readings additionally (in a dropdown toggle v arrow)
 
 - Cite the anchor document properly: author-year with DOI or arXiv link; RFC number
   and section with a datatracker link.
@@ -157,7 +157,7 @@ subject demands it, but nav, rules, and body text stay on these tokens.
 - Where popular understanding rests on evidence the document doesn't actually
   provide, say so at the point the claim appears.
 
-### Syntheses additionally
+### Syntheses additionally (in a dropdown toggle v arrow)
 
 - **A reference list at the end**, naming the sources the page actually rests on:
   papers, specs, vendor documentation, project repositories. Not exhaustive -
