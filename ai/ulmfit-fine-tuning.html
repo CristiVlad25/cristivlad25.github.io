@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ULMFiT · the recipe that made fine-tuning work</title>
+<meta name="description" content="A close reading of Howard and Ruder 2018: move the three dials ULMFiT prescribes - discriminative rates, the slanted triangular schedule, gradual unfreezing - and read every ablation against the table it came from.">
+<meta property="og:title" content="ULMFiT · the recipe that made fine-tuning work">
+<meta property="og:description" content="Universal Language Model Fine-tuning, read closely: what the ablation tables actually show, which numbers are measured and which are drawn here, and what survived into the transformer era.">
+<meta property="og:type" content="article">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* site design tokens */
+  --ink:#0B0E13; --panel:#10141B; --rule:#1F2630; --rule-lit:#39434F;
+  --text:#E6E9ED; --dim:#7D8794; --ai:#B98CFF;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+  /* working palette: what a layer is doing right now */
+  --warm:#F0A93B; --warm-deep:#F5C071; --warm-soft:rgba(240,169,59,.13);
+  --ice:#2C3E52; --ice-deep:#5AA9E6; --ice-text:#8FC4EE;
+  --bad:#E4705E; --bad-soft:rgba(228,112,94,.13);
+  --new:#B98CFF;
+  --track:#151A22;
+  --shadow:none;
+  --r:3px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+html,body{background:var(--ink)}
+body{margin:0;color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--cond);font-weight:600;letter-spacing:-.02em;margin:0}
+h1{font-weight:700;font-size:clamp(26px,4.6vw,44px);line-height:1.05;letter-spacing:-.025em;max-width:22ch}
+h2{font-size:clamp(20px,3vw,28px);line-height:1.15}
+h3{font-size:16.5px;line-height:1.25}
+p{margin:0 0 .8rem;max-width:62ch}
+.muted{color:var(--dim)}
+.small{font-size:.86rem}
+a{color:var(--ai)}
+.wrap{max-width:920px;margin:0 auto;padding:0 20px}
+section{padding:56px 0;border-top:1px solid var(--rule)}
+section:first-of-type{border-top:0}
+.lead{font-size:1.08rem;max-width:58ch}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--shadow)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.stack{display:grid;gap:20px}
+@media(min-width:760px){.two{grid-template-columns:1fr 1fr}}
+svg{display:block;max-width:100%;height:auto}
+svg text{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;padding:3px;background:var(--panel);gap:2px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;color:var(--dim);font-size:.92rem;font-weight:500;transition:background .18s,color .18s}
+.seg button[aria-pressed="true"]{background:var(--ai);color:#0B0E13;font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--ai);outline-offset:1px}
+.ctrl{display:flex;align-items:center;gap:10px;font-size:.9rem;color:var(--dim)}
+.ctrl b{color:var(--text);font-weight:600;min-width:3.6ch;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{accent-color:var(--warm);width:150px}
+input[type=checkbox]{accent-color:var(--ai)}
+input[type=range]:focus-visible{outline:2px solid var(--ai);outline-offset:3px}
+.chip{display:inline-block;padding:2px 9px;border-radius:2px;font:10.5px/1.7 var(--mono);letter-spacing:.06em;border:1px solid var(--rule)}
+.chip.warm{background:var(--warm-soft);border-color:transparent;color:var(--warm-deep)}
+.chip.ice{background:var(--ice);border-color:transparent;color:var(--ice-text)}
+.chip.bad{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font:11px/1.7 var(--mono);letter-spacing:.06em;color:var(--dim)}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend .l-warm::before{background:var(--warm)}
+.legend .l-ice::before{background:var(--ice);background-image:repeating-linear-gradient(135deg,transparent 0 3px,var(--ice-deep) 3px 4px)}
+.legend .l-new::before{border:2px dashed var(--new);background:transparent;box-sizing:border-box}
+[data-tip]{cursor:help}
+.tip{position:fixed;z-index:50;max-width:290px;background:var(--panel);color:var(--text);border:1px solid var(--rule);padding:10px 12px;border-radius:3px;font-size:.86rem;line-height:1.45;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s}
+.tip.on{opacity:1;transform:none}
+.tip b{font-weight:600}
+.hint{font-size:.82rem;color:var(--dim);font-style:italic}
+.hero{padding:64px 0 40px}
+.hero .meta{display:flex;gap:8px 18px;flex-wrap:wrap;font:11.5px/1.7 var(--mono);letter-spacing:.04em;color:var(--dim);margin-top:16px}
+.stage-tabs{display:flex;gap:0;border-bottom:1px solid var(--rule);margin-top:28px}
+.stage-tabs button{flex:1;border:0;background:transparent;padding:14px 8px 12px;text-align:left;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;color:var(--dim);transition:color .18s,border-color .18s}
+.stage-tabs button .n{font-family:var(--mono);font-weight:500;font-size:1.15rem;color:var(--text);display:block;line-height:1}
+.stage-tabs button .t{font-size:.9rem;display:block;margin-top:4px}
+.stage-tabs button[aria-selected="true"]{border-bottom-color:var(--ai);color:var(--text)}
+.stage-tabs button:focus-visible{outline:2px solid var(--ai);outline-offset:-2px}
+.stage-body{display:grid;gap:22px;margin-top:20px}
+@media(min-width:820px){.stage-body{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start}}
+.stage-note{padding-top:6px}
+.stage-note h3{margin-bottom:8px}
+.epochs{margin-top:14px;display:none}
+.epochs.on{display:block}
+.ep-btns{display:flex;gap:6px;flex-wrap:wrap}
+.ep-btns button{border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.9rem}
+.ep-btns button[aria-pressed="true"]{background:var(--warm-soft);border-color:var(--warm);color:var(--warm-deep);font-weight:600}
+.ep-btns button:focus-visible{outline:2px solid var(--ai)}
+.layer{transition:fill .45s,stroke .45s,opacity .45s}
+.lr-label{transition:opacity .3s}
+.tech{display:grid;gap:36px;margin-top:28px}
+.tech-item{display:grid;gap:14px}
+@media(min-width:820px){.tech-item{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:28px;align-items:start}}
+.tech-item .fig{padding:16px}
+.bars{display:grid;gap:8px}
+.bar-row{display:grid;grid-template-columns:110px 1fr 66px;align-items:center;gap:10px;font:11.5px/1.7 var(--mono)}
+.bar-row .name{color:var(--dim)}
+.bar-track{height:14px;background:var(--track);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;background:var(--warm);border-radius:3px;transition:width .3s}
+.bar-row .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.abl-row{display:grid;grid-template-columns:minmax(112px,190px) 1fr 60px;gap:12px;align-items:center;padding:7px 6px;border-radius:2px;font:12px/1.7 var(--mono);cursor:help}
+.abl-row:hover,.abl-row:focus-visible{background:var(--panel);outline:none}
+.abl-row .name{color:var(--dim)}
+.abl-row.best .name{color:var(--text);font-weight:600}
+.abl-row .track{height:12px;background:var(--track);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.abl-row .fill{height:100%;border-radius:3px;background:var(--ice-deep);transition:width .35s,background .3s}
+.abl-row.best .fill{background:var(--warm)}
+.abl-row.worst .fill{background:var(--bad)}
+.abl-row .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.recipe{display:grid;gap:0}
+.recipe details{border-top:1px solid var(--rule);padding:0}
+.recipe details:last-child{border-bottom:1px solid var(--rule)}
+.recipe summary{cursor:pointer;padding:14px 4px;font-weight:500;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.recipe summary::-webkit-details-marker{display:none}
+.recipe summary::after{content:"▾";font-family:var(--mono);font-size:1rem;color:var(--dim);line-height:1}
+.recipe details[open] summary::after{content:"▴"}
+.recipe summary:focus-visible{outline:2px solid var(--ai);border-radius:4px}
+.recipe .body{padding:0 4px 18px;color:var(--dim);font-size:.94rem}
+.recipe .body ul{margin:0;padding-left:18px}
+.recipe .body li{margin:4px 0}
+.recipe code{font-family:var(--mono);background:var(--rule);padding:1px 6px;border-radius:4px;color:var(--text);font-size:.9em}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;font:12.4px/1.7 var(--mono)}
+.kv dt{color:var(--dim)}
+.kv dd{margin:0;font-variant-numeric:tabular-nums}
+.play{border:1px solid var(--rule);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer;font-size:.9rem}
+.play:focus-visible{outline:2px solid var(--ai)}
+footer{padding:40px 0 64px;color:var(--dim);font-size:.9rem;border-top:1px solid var(--rule)}
+footer h2{font-size:17px;margin-bottom:12px;color:var(--text)}
+footer p{max-width:78ch}
+.scopenote{font:11.6px/1.8 var(--mono);color:var(--dim);max-width:78ch;margin-top:18px}
+.scrollx{overflow-x:auto}
+
+/* ---------- site nav ---------- */
+.cv-nav{
+  font:11px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase;
+  display:flex; align-items:center; gap:10px;
+  padding:14px 20px; background:#0B0E13;
+  border-bottom:1px solid var(--rule); position:relative; z-index:9999;
+}
+.cv-nav a{ color:var(--dim); text-decoration:none; transition:color .14s ease }
+.cv-nav a:hover,.cv-nav a:focus-visible{ color:var(--text) }
+.cv-nav span{ color:var(--rule-lit) }
+.cv-scope{
+  max-width:920px; margin:0 auto; padding:13px 20px;
+  font:10px/1.7 var(--mono); letter-spacing:.14em; text-transform:uppercase;
+  color:var(--dim); border-bottom:1px solid var(--rule);
+}
+.cv-scope b{ color:var(--rule-lit); font-weight:400 }
+
+/* ---------- anchor citation ---------- */
+details.drop{ border:1px solid var(--rule); border-radius:var(--r); background:var(--panel); margin:22px 0 0 }
+details.drop summary{
+  cursor:pointer; list-style:none; padding:11px 14px;
+  font:11px/1.6 var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+details.drop summary::-webkit-details-marker{ display:none }
+details.drop summary::after{ content:"▾"; font-family:var(--mono) }
+details.drop[open] summary::after{ content:"▴" }
+details.drop summary:hover{ color:var(--text) }
+details.drop .drop-body{ padding:0 14px 16px; border-top:1px solid var(--rule) }
+.cite-main{ font:12.4px/1.8 var(--mono); color:var(--dim); margin:14px 0 0; padding-left:12px; border-left:2px solid var(--ai); max-width:76ch }
+.cite-main a{ color:var(--ai); text-decoration:none; border-bottom:1px solid var(--rule-lit) }
+.cite-main a:hover,.cite-main a:focus-visible{ border-bottom-color:var(--ai) }
+.drop-body ul{ margin:14px 0 0; padding-left:17px }
+.drop-body li{ font-size:13.4px; color:var(--dim); margin-bottom:9px; max-width:78ch }
+.drop-body li a{ color:var(--ai); text-decoration:none; border-bottom:1px solid var(--rule) }
+.drop-body li a:hover,.drop-body li a:focus-visible{ border-bottom-color:var(--ai) }
+
+/* ---------- evidence tiers ---------- */
+.tiers{ display:flex; flex-wrap:wrap; gap:8px 16px; margin:22px 0 0; padding:14px 16px;
+  background:var(--panel); border:1px solid var(--rule); border-radius:var(--r) }
+.tiers p{ margin:0; font:11.6px/1.6 var(--mono); color:var(--dim); flex:1 1 230px; max-width:none }
+.tier{
+  display:inline-block; font:10px/1.5 var(--mono); letter-spacing:.1em;
+  text-transform:uppercase; padding:2px 7px; border-radius:2px;
+  border:1px solid var(--rule-lit); color:var(--dim); white-space:nowrap;
+}
+.tier.reported{ border-color:#B98CFF; color:#B98CFF }
+.tier.recomputed{ border-color:#5AA9E6; color:#5AA9E6 }
+.tier.sketched{ border-color:#F0A93B; color:#F0A93B }
+h2 .tier{ vertical-align:middle; margin-left:10px }
+
+/* ---------- formulas ---------- */
+.formula{
+  font:11.4px/1.9 var(--mono); color:var(--dim);
+  background:var(--track); border:1px solid var(--rule); border-radius:2px;
+  padding:9px 11px; margin-top:12px; overflow-x:auto;
+}
+.formula b{ color:var(--text); font-weight:500 }
+.formula .fl{ display:block; white-space:nowrap }
+/* grid children must be allowed to shrink below their content width at phone size */
+.tech>*,.tech-item>*,.stage-body>*,.stack>*,.plays>*{ min-width:0 }
+.formula sub,.formula sup{ font-size:.8em }
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<nav class="cv-nav">
+  <a href="/">Cristi Vlad</a>
+  <span>/</span>
+  <a href="/#ai">AI</a>
+</nav>
+
+<p class="cv-scope">Source reading <b>·</b> arXiv:1801.06146 <b>·</b> Howard and Ruder 2018 <b>·</b> one paper read closely, with every dial it specifies made live</p>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>Teach the model your task<br>without letting it forget English.</h1>
+    <p class="lead" style="margin-top:18px">In 2018, fine-tuning a pretrained language model for NLP mostly didn't work: the model either overfit or forgot what pretraining taught it. ULMFiT showed that the idea was fine; the <em>recipe</em> was missing. This page is that recipe, with every dial live.</p>
+    <p class="lead">This is a <strong>source reading</strong>, not a survey of transfer learning. One paper is the anchor, and the page's job is to keep what it measured separate from the shapes drawn here to explain it. Every figure carries a tier badge saying which of the two you are looking at.</p>
+    <div class="meta">
+      <span>Howard and Ruder, ACL 2018</span>
+      <span><a href="https://arxiv.org/abs/1801.06146">arXiv:1801.06146</a></span>
+      <span>3-layer AWD-LSTM, no attention, one architecture for every task</span>
+    </div>
+
+    <details class="drop">
+      <summary>The anchor document, and the work it names</summary>
+      <div class="drop-body">
+        <p class="cite-main">Howard J, Ruder S. 2018. Universal Language Model Fine-tuning for Text Classification. ACL 2018, 328 to 339. <a href="https://arxiv.org/abs/1801.06146">arXiv:1801.06146</a> <b>·</b> <a href="https://doi.org/10.18653/v1/P18-1031">doi:10.18653/v1/P18-1031</a></p>
+        <ul>
+          <li>Merity S, Keskar N, Socher R. 2018. Regularizing and optimizing LSTM language models. ICLR 2018. <a href="https://arxiv.org/abs/1708.02182">arXiv:1708.02182</a> <em>the AWD-LSTM backbone and its dropout schedule, used unchanged.</em></li>
+          <li>Merity S, Xiong C, Bradbury J, Socher R. 2017. Pointer sentinel mixture models. ICLR 2017. <a href="https://arxiv.org/abs/1609.07843">arXiv:1609.07843</a> <em>introduces WikiText-103, the pretraining corpus in stage a.</em></li>
+          <li>Smith L. 2017. Cyclical learning rates for training neural networks. WACV 2017. <a href="https://arxiv.org/abs/1506.01186">arXiv:1506.01186</a> <em>the triangular schedule that the slanted triangular rate is a one-cycle variant of.</em></li>
+          <li>Felbo B, Mislove A, Sogaard A, Rahwan I, Lehmann S. 2017. Using millions of emoji occurrences to learn any-domain representations. EMNLP 2017. <a href="https://arxiv.org/abs/1708.00524">arXiv:1708.00524</a> <em>chain-thaw, the ablation row that gradual unfreezing is measured against.</em></li>
+          <li>McCann B, Bradbury J, Xiong C, Socher R. 2017. Learned in translation: contextualized word vectors. NeurIPS 2017. <a href="https://arxiv.org/abs/1708.00107">arXiv:1708.00107</a> <em>CoVe, the prior transfer baseline on IMDb and TREC-6.</em></li>
+          <li>Dai A, Le Q. 2015. Semi-supervised sequence learning. NeurIPS 2015. <a href="https://arxiv.org/abs/1511.01432">arXiv:1511.01432</a> <em>the earlier LM fine-tuning attempt the paper positions itself against.</em></li>
+        </ul>
+      </div>
+    </details>
+
+    <div class="tiers">
+      <p><span class="tier reported">Reported</span> a number the paper measured and printed in a table. Checkable against the source.</p>
+      <p><span class="tier recomputed">Recomputed</span> drawn here from equations and defaults the paper states. The rule is the paper's, the arithmetic is this page's.</p>
+      <p><span class="tier sketched">Sketched</span> shape only, chosen to make a mechanism visible. Not measured, and there is no table behind it.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ============ STAGES ============ -->
+<section class="wrap" id="stages" style="padding-top:8px">
+  <h2>Three stages, one network <span class="tier recomputed">Recomputed</span></h2>
+  <p class="muted" style="margin-top:8px">Click a stage. The same stack of layers gets reused all the way through; only what feeds it and which layers are allowed to change differ. Hover any layer for what it does right now.</p>
+
+  <div class="stage-tabs" role="tablist" aria-label="ULMFiT stages">
+    <button role="tab" aria-selected="true" data-stage="1"><span class="n">a</span><span class="t">Pretrain LM on Wikipedia</span></button>
+    <button role="tab" aria-selected="false" data-stage="2"><span class="n">b</span><span class="t">Fine-tune LM on your text</span></button>
+    <button role="tab" aria-selected="false" data-stage="3"><span class="n">c</span><span class="t">Fine-tune classifier on labels</span></button>
+  </div>
+
+  <div class="stage-body">
+    <div>
+      <div id="stackFig"></div>
+      <div class="legend" style="margin-top:8px">
+        <span class="l-warm">training</span><span class="l-ice">frozen</span><span class="l-new">new, from scratch</span>
+      </div>
+    </div>
+    <div class="stage-note">
+      <div id="stageNote"></div>
+      <div class="epochs" id="epochs">
+        <div class="small muted" style="margin-bottom:6px">Gradual unfreezing, epoch by epoch</div>
+        <div class="ep-btns" id="epBtns"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TECHNIQUES ============ -->
+<section class="wrap" id="techniques">
+  <h2>The three dials that make it work <span class="tier recomputed">Recomputed</span></h2>
+  <p class="muted" style="margin-top:8px">Each one is small. Together they stop catastrophic forgetting on tiny datasets and still converge fast on big ones. The ablations further down show what happens when you drop any of them.</p>
+
+  <div class="tech">
+
+    <!-- Discriminative fine-tuning -->
+    <div class="tech-item">
+      <div>
+        <h3>1 · Discriminative fine-tuning</h3>
+        <p class="muted" style="margin-top:8px">Lower layers hold general knowledge (syntax, common words); upper layers hold task-specific stuff. So don't move them equally. Pick a learning rate for the top layer, then divide by 2.6 for each layer below.</p>
+        <p class="small muted">The 2.6 was found empirically by tuning only the last layer first, then setting <span data-tip="η<sup>l-1</sup> = η<sup>l</sup> / 2.6, the update rule from equation 2 in the paper, applied per layer group.">η<sup>l-1</sup> = η<sup>l</sup>/2.6</span>. Drag to feel how quickly the embeddings become nearly frozen.</p>
+      </div>
+      <div class="panel fig">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <label class="ctrl">top-layer LR <input type="range" id="discrLR" min="1" max="30" value="10" step="1"> <b id="discrLRv">0.010</b></label>
+          <label class="ctrl">ratio <input type="range" id="discrRatio" min="10" max="40" value="26" step="1"> <b id="discrRatiov">2.6</b></label>
+        </div>
+        <div class="bars" id="discrBars"></div>
+        <div class="formula" id="discrFormula"></div>
+        <div class="hint" style="margin-top:10px">Set ratio to 1.0 and this becomes ordinary fine-tuning: every layer moves at the same speed.</div>
+      </div>
+    </div>
+
+    <!-- STLR -->
+    <div class="tech-item">
+      <div>
+        <h3>2 · Slanted triangular learning rate</h3>
+        <p class="muted" style="margin-top:8px">A short, steep climb to the peak (10% of training), then a long, slow slide down. The fast start gets the model into the right region; the long decay refines without wrecking anything.</p>
+        <p class="small muted">Hover the curve to read the rate at any step. Toggle cosine annealing to see the competitor that won on large data but lost on small.</p>
+      </div>
+      <div class="panel fig">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <label class="ctrl">cut_frac <input type="range" id="cutFrac" min="2" max="50" value="10" step="1"> <b id="cutFracv">0.10</b></label>
+          <label class="ctrl">ratio <input type="range" id="stlrRatio" min="2" max="64" value="32" step="1"> <b id="stlrRatiov">32</b></label>
+          <label class="ctrl" style="gap:6px"><input type="checkbox" id="showCos"> cosine</label>
+        </div>
+        <div id="stlrFig"></div>
+        <div class="row" style="justify-content:space-between;margin-top:6px">
+          <span class="small" id="stlrRead">&nbsp;</span>
+          <button class="small play" id="stlrReset">Paper defaults</button>
+        </div>
+        <div class="formula" id="stlrFormula"></div>
+      </div>
+    </div>
+
+    <!-- Gradual unfreezing -->
+    <div class="tech-item">
+      <div>
+        <h3>3 · Gradual unfreezing</h3>
+        <p class="muted" style="margin-top:8px">Unfreeze the top layer, train one epoch. Unfreeze the next one down, train again. Keep going until everything is thawed, then train to convergence. The layers with the most general knowledge are exposed last and least.</p>
+        <p class="small muted">This is what the epoch buttons in stage c above are doing. Unlike <span data-tip="Chain-thaw (Felbo et al., 2017) trains one layer at a time and re-freezes the rest. ULMFiT keeps every thawed layer training.">chain-thaw</span>, thawed layers stay thawed.</p>
+      </div>
+      <div class="panel fig">
+        <div id="thawFig"></div>
+        <div class="hint" style="margin-top:6px">Press play, or hover any column.</div>
+        <div class="row" style="margin-top:8px"><button class="play" id="thawPlay">Play</button></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ CONCAT POOLING ============ -->
+<section class="wrap" id="pooling">
+  <h2>One small trick for long documents <span class="tier sketched">Sketched</span></h2>
+  <p class="muted" style="margin-top:8px">The signal in a review is usually a few words, anywhere in it. Reading only the final hidden state throws that away. The classifier instead sees three views of the whole document, concatenated. Hover each.</p>
+  <div class="panel" style="padding:16px;margin-top:16px"><div id="poolFig"></div></div>
+</section>
+
+<!-- ============ ABLATIONS ============ -->
+<section class="wrap" id="ablation">
+  <h2>Drop a dial and see what breaks <span class="tier reported">Reported</span></h2>
+  <p class="muted" style="margin-top:8px">Validation error, lower is better. The story changes with dataset size: pick one. Hover a row for what that method means.</p>
+
+  <div class="row" style="margin:18px 0 12px;justify-content:space-between">
+    <div class="seg" id="ablTable" role="group" aria-label="Which stage to ablate">
+      <button aria-pressed="true" data-t="clf">Classifier fine-tuning</button>
+      <button aria-pressed="false" data-t="lm">LM fine-tuning</button>
+      <button aria-pressed="false" data-t="pre">Pretraining</button>
+    </div>
+    <div class="seg" id="ablData" role="group" aria-label="Dataset">
+      <button aria-pressed="true" data-d="0">IMDb</button>
+      <button aria-pressed="false" data-d="1">TREC-6</button>
+      <button aria-pressed="false" data-d="2">AG</button>
+    </div>
+  </div>
+  <div class="small muted" id="ablDataNote" style="margin-bottom:8px"></div>
+  <div class="panel" style="padding:10px 8px"><div id="ablRows"></div></div>
+  <p class="small muted" id="ablTake" style="margin-top:12px"></p>
+</section>
+
+<!-- ============ FORGETTING ============ -->
+<section class="wrap" id="forget">
+  <h2>What forgetting looks like <span class="tier sketched">Sketched</span></h2>
+  <p class="muted" style="margin-top:8px">Fine-tune everything at once and validation error bottoms out early, then climbs as pretrained knowledge is overwritten. ULMFiT starts slower (only the head is training) but keeps improving into late epochs.</p>
+  <div class="panel" style="padding:16px;margin-top:16px">
+    <div id="forgetFig"></div>
+    <div class="row" style="justify-content:space-between;margin-top:8px">
+      <span class="small" id="forgetRead">&nbsp;</span>
+      <button class="play" id="forgetPlay">Play</button>
+    </div>
+    <div class="hint" style="margin-top:6px">Curve shapes follow Figure 4 of the paper; the numbers here are illustrative, not measured.</div>
+  </div>
+</section>
+
+<!-- ============ RESULTS ============ -->
+<section class="wrap" id="results">
+  <h2>Did it beat the field? <span class="tier reported">Reported</span></h2>
+  <p class="muted" style="margin-top:8px">Test error against the prior state of the art on six datasets, using one plain LSTM and identical hyperparameters everywhere. Hover a bar for the model.</p>
+  <div class="seg" id="resData" role="group" aria-label="Dataset" style="margin:18px 0 12px;flex-wrap:wrap"></div>
+  <div class="stack two">
+    <div class="panel" style="padding:16px"><div id="resFig"></div></div>
+    <div>
+      <div class="panel" style="padding:16px">
+        <div class="small muted">Error reduction vs. best prior model</div>
+        <div id="resBig" style="font-family:var(--cond);font-weight:700;font-size:2.8rem;line-height:1;margin:8px 0 4px;letter-spacing:-.02em"></div>
+        <div class="small muted" id="resNote"></div>
+        <div class="formula" id="resFormula"></div>
+      </div>
+      <div class="panel" style="padding:16px;margin-top:14px">
+        <div class="small muted" style="margin-bottom:8px">With only 100 labeled examples</div>
+        <div class="row" style="margin-bottom:10px">
+          <div class="seg" id="lowData"><button aria-pressed="true" data-d="IMDb">IMDb</button><button aria-pressed="false" data-d="AG">AG</button></div>
+          <div class="seg" id="lowMode"><button aria-pressed="true" data-m="sup">labels only</button><button aria-pressed="false" data-m="semi">+ unlabeled text</button></div>
+        </div>
+        <div id="lowFig"></div>
+        <div class="small muted" id="lowNote" style="margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RECIPE ============ -->
+<section class="wrap" id="recipe">
+  <h2>If you want to actually do this <span class="tier reported">Reported</span></h2>
+  <p class="muted" style="margin-top:8px">The paper is unusual in giving every number. Here they are, plus what survived into the transformer era.</p>
+  <div class="recipe" style="margin-top:18px">
+    <details>
+      <summary>The exact defaults</summary>
+      <div class="body">
+        <dl class="kv">
+          <dt>Backbone</dt><dd>AWD-LSTM: 400-d embeddings, 3 layers × 1150 units, BPTT 70</dd>
+          <dt>Pretraining corpus</dt><dd>WikiText-103, 28,595 articles, 103M words (done once)</dd>
+          <dt>Dropout</dt><dd>0.4 layers, 0.3 RNN, 0.4 input embedding, 0.05 embedding, 0.5 weight-drop on hidden-to-hidden</dd>
+          <dt>Optimizer</dt><dd>Adam, β₁ = 0.7 (not 0.9), β₂ = 0.99, batch 64</dd>
+          <dt>Base LR</dt><dd>0.004 for LM fine-tuning, 0.01 for the classifier</dd>
+          <dt>STLR</dt><dd>cut_frac 0.1, ratio 32, one cycle only</dd>
+          <dt>Discriminative</dt><dd>÷2.6 per layer going down</dd>
+          <dt>Epochs</dt><dd>~15 for LM fine-tuning on small data; 50 for the classifier</dd>
+          <dt>Classifier head</dt><dd>2 linear blocks (BN + dropout + ReLU), hidden size 50, softmax out; the only weights trained from scratch</dd>
+          <dt>Extras</dt><dd>Forward + backward LMs ensembled (about 0.5 to 0.7 error points); special tokens for ALL-CAPS, elongation, repetition</dd>
+        </dl>
+      </div>
+    </details>
+    <details>
+      <summary>When it helps most</summary>
+      <div class="body">
+        <ul>
+          <li>Small or medium labeled sets, which is most commercial data. Pretraining cut TREC-6 error from 10.7% to 5.7%; on 120k-example AG it still helped, just less.</li>
+          <li>You have lots of unlabeled text in your domain. Stage b uses it for free and doubled the effective data efficiency on IMDb.</li>
+          <li>Non-English languages and new tasks with no bespoke architecture: language modeling needs no labels and no task-specific design.</li>
+        </ul>
+      </div>
+    </details>
+    <details>
+      <summary>Traps the paper warns about</summary>
+      <div class="body">
+        <ul>
+          <li><b>Only training the top layer</b> (the classic CV move) severely underfits text models: 16.1% error on TREC-6 versus 5.7%.</li>
+          <li><b>Fine-tuning everything at one flat rate</b> looks great after epoch 1 and then quietly degrades. If you early-stop, you may never notice you left accuracy on the table.</li>
+          <li><b>Skipping LM fine-tuning</b> on a small dataset with plain schedules can make things worse; the discriminative rates and STLR are what made stage b pay off on TREC-6.</li>
+          <li><b>No dropout in the LM</b> is fine on large data and overfits on small.</li>
+        </ul>
+      </div>
+    </details>
+    <details>
+      <summary>What carried over to transformers</summary>
+      <div class="body">
+        <ul>
+          <li>Warm-up then decay schedules are the norm for fine-tuning; STLR is the LSTM-era ancestor of that shape.</li>
+          <li>Layer-wise learning-rate decay (a smaller LR for lower layers) is a standard knob when fine-tuning encoder models. Same idea, different name.</li>
+          <li>Continued pretraining on in-domain text before task fine-tuning (stage b) is still one of the cheapest wins on specialised domains.</li>
+          <li>Gradual unfreezing shows up less often today, but the underlying caution it encoded, don't let a new randomly-initialised head send large gradients through a good backbone, survives in tricks like freezing the backbone for the first steps.</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <h2>What the numbers on this page are</h2>
+    <p class="muted">Built from Howard and Ruder, "Universal Language Model Fine-tuning for Text Classification" (ACL 2018), cited in full at the top. Every ablation and results figure is the paper's own, taken from tables 4, 6 and 7 and from the headline results table, and marked <span class="tier reported">Reported</span>. The learning-rate curves, the discriminative rate bars and the unfreezing timeline are computed here from the equations and defaults the paper states, and marked <span class="tier recomputed">Recomputed</span>. The forgetting curves and the pooling schematic are drawn to show a shape, not a measurement, and are marked <span class="tier sketched">Sketched</span>.</p>
+    <p class="muted">Two limits worth stating. The TREC-6 result rests on a 500-question test set and the paper says the gap is not statistically significant, so the headline reduction there is weaker evidence than the same figure on IMDb. And the paper measures one backbone, the AWD-LSTM, on six English text classification datasets; nothing here establishes that the same three dials transfer unchanged to other architectures, languages or task families, however often the recipe is retold that way.</p>
+    <p class="scopenote">Educational only <b>·</b> figures redrawn from scratch, none reproduced from the paper <b>·</b> quotations kept short and attributed</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+const $ = (s,el=document)=>el.querySelector(s);
+const $$ = (s,el=document)=>Array.from(el.querySelectorAll(s));
+const NS='http://www.w3.org/2000/svg';
+const el=(tag,attrs={},children=[])=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);for(const c of children)e.appendChild(c);return e;};
+const txt=(x,y,s,attrs={})=>{const t=el('text',Object.assign({x,y},attrs));t.textContent=s;return t;};
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt=(v,d=4)=>{if(v>=0.001)return v.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');return v.toExponential(1);};
+
+/* ---------- tooltip ---------- */
+const tip=$('#tip');let tipTarget=null;
+function showTip(target,html){tipTarget=target;tip.innerHTML=html;tip.classList.add('on');positionTip(target);}
+function positionTip(target){const r=target.getBoundingClientRect();const tw=tip.offsetWidth,th=tip.offsetHeight;let x=r.left+r.width/2-tw/2;let y=r.top-th-8;if(y<8)y=r.bottom+8;x=Math.max(8,Math.min(x,window.innerWidth-tw-8));tip.style.left=x+'px';tip.style.top=y+'px';}
+function hideTip(){tip.classList.remove('on');tipTarget=null;}
+function bindTips(root=document){
+  $$('[data-tip]',root).forEach(t=>{if(t.__tipBound)return;t.__tipBound=true;
+    if(!t.hasAttribute('tabindex')&&t.tagName!=='BUTTON')t.setAttribute('tabindex','0');
+    const show=()=>showTip(t,t.getAttribute('data-tip'));
+    t.addEventListener('mouseenter',show);t.addEventListener('focus',show);
+    t.addEventListener('mouseleave',hideTip);t.addEventListener('blur',hideTip);
+    t.addEventListener('click',e=>{e.stopPropagation();if(tipTarget===t&&tip.classList.contains('on')&&t.__clicked){hideTip();t.__clicked=false;}else{show();t.__clicked=true;}});
+    t.addEventListener('mouseleave',()=>{t.__clicked=false;});
+  });
+}
+window.addEventListener('scroll',()=>{if(tipTarget)positionTip(tipTarget);},{passive:true});
+document.addEventListener('click',e=>{if(tipTarget&&!e.target.closest('[data-tip]'))hideTip();});
+
+/* ---------- STAGE STACK ---------- */
+const LAYERS=[
+  {id:'head',name:'Output',  general:0},
+  {id:'l3',  name:'Layer 3', general:1},
+  {id:'l2',  name:'Layer 2', general:2},
+  {id:'l1',  name:'Layer 1', general:3},
+  {id:'emb', name:'Embedding',general:4}
+];
+const STAGE_TEXT={
+  1:{title:'Learn the language once',
+     body:'Predict the next word across 103 million words of Wikipedia. Every layer trains. This is the expensive part, and you do it once, then reuse it for every task. Lower layers end up holding the most general knowledge.',
+     input:'Wikipedia · 103M words',output:'next word (whole vocabulary)'},
+  2:{title:'Learn how your text is different',
+     body:'Still predicting the next word, but now on your own domain text (movie reviews, tickets, contracts), labels not required. It converges fast because only the idiosyncrasies need learning. Discriminative rates and STLR keep the general layers mostly intact.',
+     input:'your unlabeled text',output:'next word (your vocabulary)'},
+  3:{title:'Learn the task, carefully',
+     body:'Swap the word predictor for a small classifier head, the only thing trained from scratch. Then thaw the stack from the top, one layer per epoch, with the same rate discipline. Aggressive here means catastrophic forgetting; timid means underfitting.',
+     input:'your labeled examples',output:'class (e.g. positive / negative)'}
+};
+const LAYER_TIPS={
+  head:{1:'<b>Softmax over the vocabulary.</b> Predicts the next word. Discarded at stage c.',2:'<b>Softmax over the vocabulary.</b> Same objective, now tuned to your domain\'s word usage.',3:'<b>Classifier head, new.</b> Two linear blocks with batch-norm, dropout and ReLU, then softmax over your classes. The only randomly initialised weights.'},
+  l3:{1:'<b>Top LSTM layer.</b> Learns the most task-specific features; least transferable.',2:'<b>Top LSTM layer.</b> Gets the full top-layer rate: it is the one most expected to change.',3:'<b>Top LSTM layer.</b> First to thaw (epoch 2) because it holds the least general knowledge.'},
+  l2:{1:'<b>Middle LSTM layer.</b> Longer-range dependencies and hierarchy.',2:'<b>Middle LSTM layer.</b> Rate ÷2.6² of the top layer.',3:'<b>Middle LSTM layer.</b> Thaws at epoch 3, at a rate ÷2.6² of the head.'},
+  l1:{1:'<b>First LSTM layer.</b> Local syntax and word-level context; very general.',2:'<b>First LSTM layer.</b> Rate ÷2.6³ of the top layer: barely moves.',3:'<b>First LSTM layer.</b> Thaws last, with the embeddings, in epoch 4.'},
+  emb:{1:'<b>Word embeddings, 400-d.</b> The most general knowledge in the model.',2:'<b>Word embeddings.</b> Grouped with layer 1 at ÷2.6³ of the top rate, so it nudges rather than rewrites.',3:'<b>Word embeddings.</b> Thawed last and moved least: this is the ImageNet-style "keep the early layers" instinct, done by schedule rather than by hand.'}
+};
+let stage=1, epoch=1;
+const stackHost=$('#stackFig');
+function layerState(L,i){
+  if(stage!==3)return 'train';
+  if(L.id==='head')return 'new';
+  const thawEpoch=i+1; // l3->2, l2->3, l1->4, emb->4? paper: unfreeze one lower frozen layer per epoch until all
+  const thaw={l3:2,l2:3,l1:4,emb:4}[L.id];
+  return epoch>=thaw?'train':'frozen';
+}
+function layerLR(L,i){
+  const top= stage===2?0.004:0.01;
+  if(stage===1)return null;
+  return top/Math.pow(2.6,Math.min(i,3));
+}
+function renderStack(){
+  const W=560,H=430,x0=150,bw=270,bh=48,gap=14,top=64;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Layer stack for stage '+stage});
+  const defs=el('defs');
+  const pat=el('pattern',{id:'hatch',width:'7',height:'7',patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});
+  pat.appendChild(el('rect',{width:'7',height:'7',fill:'var(--ice)'}));
+  pat.appendChild(el('line',{x1:'0',y1:'0',x2:'0',y2:'7',stroke:'var(--ice-deep)','stroke-width':'1.2',opacity:'.6'}));
+  defs.appendChild(pat);svg.appendChild(defs);
+  // output
+  const st=STAGE_TEXT[stage];
+  svg.appendChild(txt(x0+bw/2,26,st.output,{'text-anchor':'middle','font-size':'13','fill':'var(--dim)'}));
+  svg.appendChild(el('path',{d:`M${x0+bw/2} ${top-4} v-24`,stroke:'var(--dim)','stroke-width':'1.5',fill:'none','marker-end':'url(#arr)'}));
+  const mk=el('marker',{id:'arr',viewBox:'0 0 10 10',refX:'5',refY:'5',markerWidth:'6',markerHeight:'6',orient:'auto-start-reverse'});
+  mk.appendChild(el('path',{d:'M0 0 L10 5 L0 10 z',fill:'var(--dim)'}));defs.appendChild(mk);
+  LAYERS.forEach((L,i)=>{
+    const y=top+i*(bh+gap);const state=layerState(L,i);
+    const g=el('g',{class:'layerg'});
+    let fill='var(--warm)',stroke='none',dash='0',opacity='1';
+    if(state==='frozen'){fill='url(#hatch)';}
+    if(state==='new'){fill='var(--panel)';stroke='var(--new)';dash='6 4';}
+    const r=el('rect',{x:x0,y,width:bw,height:bh,rx:'8',fill,stroke,'stroke-width':'2','stroke-dasharray':dash,class:'layer'});
+    g.appendChild(r);
+    const label=stage===3&&L.id==='head'?'Classifier head':(L.id==='head'?'Softmax':L.name);
+    g.appendChild(txt(x0-12,y+bh/2+5,label,{'text-anchor':'end','font-size':'14','fill':'var(--text)','font-weight':'500'}));
+    // status text inside
+    let inside='';
+    if(state==='frozen')inside='frozen';
+    else if(state==='new')inside='from scratch';
+    else if(stage===1)inside='training';
+    else inside='training';
+    g.appendChild(txt(x0+bw/2,y+bh/2+5,inside,{'text-anchor':'middle','font-size':'12','fill':state==='frozen'?'var(--ice-text)':(state==='new'?'var(--new)':'var(--ink)'),'font-style':state==='frozen'?'italic':'normal'}));
+    // LR on right
+    const lr=layerLR(L,i);
+    if(lr!==null&&state!=='frozen'){
+      g.appendChild(txt(x0+bw+12,y+bh/2-3,'η = '+fmt(lr),{'font-size':'12','fill':'var(--dim)',class:'lr-label'}));
+      if(i>0)g.appendChild(txt(x0+bw+12,y+bh/2+12,'÷2.6'+['','','²','³','³'][i]+(i===4?' (same group as layer 1)':''),{'font-size':'11','fill':'var(--dim)',opacity:'.7',class:'lr-label'}));
+    } else if(lr!==null){
+      g.appendChild(txt(x0+bw+12,y+bh/2+4,'η = 0',{'font-size':'12','fill':'var(--ice-text)',class:'lr-label',opacity:'.8'}));
+    } else {
+      g.appendChild(txt(x0+bw+12,y+bh/2+4,'one rate',{'font-size':'12','fill':'var(--dim)',opacity:'.7'}));
+    }
+    // hit area with tip
+    const hit=el('rect',{x:x0-140,y:y-4,width:bw+150,height:bh+8,fill:'transparent','data-tip':LAYER_TIPS[L.id][stage],tabindex:'0',role:'img'});
+    g.appendChild(hit);svg.appendChild(g);
+  });
+  // input
+  const yin=top+LAYERS.length*(bh+gap)+6;
+  svg.appendChild(el('path',{d:`M${x0+bw/2} ${yin+22} v-22`,stroke:'var(--dim)','stroke-width':'1.5',fill:'none','marker-end':'url(#arr)'}));
+  svg.appendChild(txt(x0+bw/2,yin+40,st.input,{'text-anchor':'middle','font-size':'13','fill':'var(--dim)'}));
+  // stage-1 note: LR uniform
+  stackHost.innerHTML='';stackHost.appendChild(svg);bindTips(stackHost);
+}
+function renderStageNote(){
+  const st=STAGE_TEXT[stage];
+  $('#stageNote').innerHTML=`<h3>${st.title}</h3><p class="muted">${st.body}</p>`+
+    (stage===2?`<p class="small"><span class="chip warm">discriminative rates</span> <span class="chip warm">STLR</span></p>`:'')+
+    (stage===3?`<p class="small"><span class="chip warm">gradual unfreezing</span> <span class="chip warm">discriminative rates</span> <span class="chip warm">STLR</span></p>`:'');
+  $('#epochs').classList.toggle('on',stage===3);
+}
+function renderEpochs(){
+  const host=$('#epBtns');host.innerHTML='';
+  const labels={1:'epoch 1',2:'epoch 2',3:'epoch 3',4:'epoch 4',5:'…to convergence'};
+  for(let e=1;e<=5;e++){const b=document.createElement('button');b.textContent=labels[e];b.setAttribute('aria-pressed',String(e===epoch));b.addEventListener('click',()=>{epoch=e;renderEpochs();renderStack();});host.appendChild(b);}
+}
+$$('.stage-tabs button').forEach(b=>b.addEventListener('click',()=>{stage=+b.dataset.stage;$$('.stage-tabs button').forEach(x=>x.setAttribute('aria-selected',String(x===b)));if(stage===3)epoch=1;renderStageNote();renderEpochs();renderStack();}));
+renderStageNote();renderEpochs();renderStack();
+
+/* ---------- DISCRIMINATIVE BARS ---------- */
+function renderDiscr(){
+  const top=+$('#discrLR').value/1000, ratio=+$('#discrRatio').value/10;
+  $('#discrLRv').textContent=top.toFixed(3);$('#discrRatiov').textContent=ratio.toFixed(1);
+  const host=$('#discrBars');host.innerHTML='';
+  const names=['Head / top','Layer 3','Layer 2','Layer 1 + emb'];
+  names.forEach((n,i)=>{const v=top/Math.pow(ratio,i);const w=Math.max(1.5,100*v/top);
+    const row=document.createElement('div');row.className='bar-row';
+    row.innerHTML=`<span class="name">${n}</span><div class="bar-track"><div class="bar-fill" style="width:${w}%"></div></div><span class="val">${fmt(v)}</span>`;host.appendChild(row);});
+  $('#discrFormula').innerHTML=
+    `<span class="fl">η<sup>l-1</sup> = η<sup>l</sup> / ratio &nbsp;&nbsp;(equation 2, applied per layer group)</span>`+
+    `<span class="fl">layer 1 + emb = <b>${fmt(top)}</b> / ${ratio.toFixed(1)}<sup>3</sup> = <b>${fmt(top/Math.pow(ratio,3))}</b></span>`;
+}
+['discrLR','discrRatio'].forEach(id=>$('#'+id).addEventListener('input',renderDiscr));renderDiscr();
+
+/* ---------- STLR ---------- */
+function stlr(t,T,cf,ratio,emax){const cut=Math.floor(T*cf);let p;if(t<cut)p=t/cut;else p=1-(t-cut)/(cut*(1/cf-1));return emax*(1+p*(ratio-1))/ratio;}
+function cosine(t,T,emax){return emax*0.5*(1+Math.cos(Math.PI*t/T));}
+const stlrHost=$('#stlrFig');
+function renderSTLR(){
+  const cf=+$('#cutFrac').value/100,ratio=+$('#stlrRatio').value,emax=0.01,T=1000,showCos=$('#showCos').checked;
+  $('#cutFracv').textContent=cf.toFixed(2);$('#stlrRatiov').textContent=ratio;
+  const W=520,H=230,pl=48,pr=14,pt=16,pb=34;
+  const sx=t=>pl+(t/T)*(W-pl-pr), sy=v=>pt+(1-v/emax)*(H-pt-pb);
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Slanted triangular learning rate schedule'});
+  // axes
+  svg.appendChild(el('line',{x1:pl,y1:sy(0),x2:W-pr,y2:sy(0),stroke:'var(--rule)'}));
+  svg.appendChild(el('line',{x1:pl,y1:pt,x2:pl,y2:sy(0),stroke:'var(--rule)'}));
+  [0,0.005,0.01].forEach(v=>{svg.appendChild(txt(pl-8,sy(v)+4,v.toString(),{'text-anchor':'end','font-size':'11','fill':'var(--dim)'}));svg.appendChild(el('line',{x1:pl,y1:sy(v),x2:W-pr,y2:sy(v),stroke:'var(--rule)'}));});
+  svg.appendChild(txt(W-pr,H-8,'training steps →',{'text-anchor':'end','font-size':'11','fill':'var(--dim)'}));
+  svg.appendChild(txt(pl,H-8,'0',{'font-size':'11','fill':'var(--dim)'}));
+  // cut marker
+  const cut=Math.floor(T*cf);
+  svg.appendChild(el('line',{x1:sx(cut),y1:pt,x2:sx(cut),y2:sy(0),stroke:'var(--warm-deep)','stroke-dasharray':'3 4',opacity:'.6'}));
+  svg.appendChild(txt(sx(cut)+5,pt+12,'peak at '+Math.round(cf*100)+'%',{'font-size':'11','fill':'var(--warm-deep)'}));
+  // curves
+  let d='',dc='';
+  for(let t=0;t<=T;t+=5){d+=(t?'L':'M')+sx(t).toFixed(1)+' '+sy(stlr(t,T,cf,ratio,emax)).toFixed(1)+' ';dc+=(t?'L':'M')+sx(t).toFixed(1)+' '+sy(cosine(t,T,emax)).toFixed(1)+' ';}
+  if(showCos){svg.appendChild(el('path',{d:dc,fill:'none',stroke:'var(--ice-deep)','stroke-width':'2','stroke-dasharray':'5 4'}));svg.appendChild(txt(W-pr-4,sy(cosine(T*0.35,T,emax))-8,'cosine',{'text-anchor':'end','font-size':'11','fill':'var(--ice-deep)'}));}
+  svg.appendChild(el('path',{d,fill:'none',stroke:'var(--warm)','stroke-width':'3','stroke-linejoin':'round'}));
+  // hover
+  const cursor=el('g',{opacity:'0'});
+  const vl=el('line',{y1:pt,y2:sy(0),stroke:'var(--dim)','stroke-width':'1'});const dot=el('circle',{r:'5',fill:'var(--warm)',stroke:'var(--panel)','stroke-width':'2'});const dot2=el('circle',{r:'4',fill:'var(--ice-deep)',stroke:'var(--panel)','stroke-width':'2'});
+  cursor.appendChild(vl);cursor.appendChild(dot);if(showCos)cursor.appendChild(dot2);svg.appendChild(cursor);
+  const overlay=el('rect',{x:pl,y:pt,width:W-pl-pr,height:H-pt-pb,fill:'transparent'});svg.appendChild(overlay);
+  const read=$('#stlrRead');
+  const move=e=>{const r=svg.getBoundingClientRect();const px=(e.touches?e.touches[0].clientX:e.clientX)-r.left;const t=Math.max(0,Math.min(T,Math.round((px/r.width*W-pl)/(W-pl-pr)*T)));const v=stlr(t,T,cf,ratio,emax);cursor.setAttribute('opacity','1');vl.setAttribute('x1',sx(t));vl.setAttribute('x2',sx(t));dot.setAttribute('cx',sx(t));dot.setAttribute('cy',sy(v));if(showCos){dot2.setAttribute('cx',sx(t));dot2.setAttribute('cy',sy(cosine(t,T,emax)));}
+    read.innerHTML=`step ${t} of ${T} · <b>η = ${fmt(v,5)}</b>`+(t<cut?' · climbing':' · decaying')+(showCos?` · cosine ${fmt(cosine(t,T,emax),5)}`:'');};
+  overlay.addEventListener('mousemove',move);overlay.addEventListener('touchmove',e=>{move(e);e.preventDefault();},{passive:false});overlay.addEventListener('touchstart',move,{passive:true});
+  overlay.addEventListener('mouseleave',()=>{cursor.setAttribute('opacity','0');read.innerHTML=`start and end at η<sub>max</sub>/${ratio} = ${fmt(emax/ratio,5)}`;});
+  read.innerHTML=`start and end at η<sub>max</sub>/${ratio} = ${fmt(emax/ratio,5)}`;
+  $('#stlrFormula').innerHTML=
+    `<span class="fl">cut = floor(T · cut_frac) = floor(${T} · ${cf.toFixed(2)}) = <b>${cut}</b></span>`+
+    `<span class="fl">p = t / cut while t &lt; cut, else 1 - (t - cut) / (cut · (1/cut_frac - 1))</span>`+
+    `<span class="fl">η<sub>t</sub> = η<sub>max</sub> · (1 + p · (ratio - 1)) / ratio &nbsp;&nbsp;η<sub>max</sub> = ${emax}, ratio = ${ratio}</span>`;
+  stlrHost.innerHTML='';stlrHost.appendChild(svg);
+}
+['cutFrac','stlrRatio','showCos'].forEach(id=>$('#'+id).addEventListener('input',renderSTLR));
+$('#stlrReset').addEventListener('click',()=>{$('#cutFrac').value=10;$('#stlrRatio').value=32;renderSTLR();});
+renderSTLR();
+
+/* ---------- THAW TIMELINE ---------- */
+const thawHost=$('#thawFig');let thawEp=0,thawTimer=null;
+function renderThaw(){
+  const cols=5,W=520,H=210,pl=84,pt=10,cw=(W-pl-10)/cols,rh=32,gap=6;
+  const rows=['Head','Layer 3','Layer 2','Layer 1','Embedding'];
+  const thawAt=[1,2,3,4,4];
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Gradual unfreezing timeline'});
+  const defs=el('defs');const pat=el('pattern',{id:'hatch2',width:'7',height:'7',patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});pat.appendChild(el('rect',{width:'7',height:'7',fill:'var(--ice)'}));pat.appendChild(el('line',{x1:'0',y1:'0',x2:'0',y2:'7',stroke:'var(--ice-deep)','stroke-width':'1.2',opacity:'.6'}));defs.appendChild(pat);svg.appendChild(defs);
+  rows.forEach((n,r)=>{const y=pt+r*(rh+gap);svg.appendChild(txt(pl-10,y+rh/2+4,n,{'text-anchor':'end','font-size':'12','fill':'var(--dim)'}));
+    for(let c=0;c<cols;c++){const x=pl+c*cw+2;const on=(c+1)>=thawAt[r];const active=thawEp===0||c<thawEp;
+      const rect=el('rect',{x,y,width:cw-4,height:rh,rx:'5',fill:on?'var(--warm)':'url(#hatch2)',opacity:active?'1':'.28',class:'layer'});
+      if(r===0&&c===0)rect.setAttribute('stroke','var(--new)'),rect.setAttribute('stroke-dasharray','5 3'),rect.setAttribute('stroke-width','2'),rect.setAttribute('fill','var(--warm-soft)');
+      svg.appendChild(rect);}
+  });
+  const yb=pt+rows.length*(rh+gap)+4;
+  for(let c=0;c<cols;c++){const lab=c<4?'ep '+(c+1):'→ converge';svg.appendChild(txt(pl+c*cw+cw/2,yb+12,lab,{'text-anchor':'middle','font-size':'11','fill':'var(--dim)'}));
+    const tips=['Epoch 1: only the new head trains. The frozen stack acts as a fixed feature extractor while random head weights settle, so their large early gradients never reach the LSTM.','Epoch 2: layer 3 thaws. Rate is ÷2.6 of the head.','Epoch 3: layer 2 thaws too. Everything already thawed keeps training.','Epoch 4: the last frozen group thaws (layer 1 and embeddings), at the lowest rates.','Then everything trains together until validation stops improving, under the STLR schedule.'];
+    const hit=el('rect',{x:pl+c*cw,y:pt,width:cw,height:yb-pt+18,fill:'transparent','data-tip':tips[c],tabindex:'0'});svg.appendChild(hit);}
+  thawHost.innerHTML='';thawHost.appendChild(svg);bindTips(thawHost);
+}
+renderThaw();
+$('#thawPlay').addEventListener('click',()=>{if(thawTimer){clearInterval(thawTimer);thawTimer=null;thawEp=0;renderThaw();$('#thawPlay').textContent='Play';return;}
+  thawEp=1;renderThaw();$('#thawPlay').textContent='Stop';thawTimer=setInterval(()=>{thawEp++;if(thawEp>5){clearInterval(thawTimer);thawTimer=null;thawEp=0;$('#thawPlay').textContent='Play';}renderThaw();},reduced?400:850);});
+
+/* ---------- CONCAT POOLING ---------- */
+(function(){
+  const host=$('#poolFig');const W=620,H=215;
+  const words=['The','plot','dragged,','but','the','last','scene','was','breathtaking.'];
+  const sig=[.2,.3,.55,.25,.2,.4,.6,.5,.95];
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Concat pooling of hidden states'});
+  const x0=20,cw=(W-40)/words.length,base=170;
+  words.forEach((w,i)=>{const x=x0+i*cw;const h=16+sig[i]*44;
+    svg.appendChild(el('rect',{x:x+6,y:base-h,width:cw-12,height:h,rx:'4',fill:i===words.length-1?'var(--warm)':'var(--ice)'}));
+    svg.appendChild(txt(x+cw/2,H-10,w,{'text-anchor':'middle','font-size':'10','fill':'var(--dim)'}));});
+  svg.appendChild(txt(x0,base-82,'hidden states h₁ … h_T · taller = more of the verdict',{'font-size':'10','fill':'var(--dim)'}));
+  const parts=[
+    {name:'h_T  (last state)',x:30,tip:'<b>The final hidden state.</b> What most models used alone. Fine for short inputs, but a 400-word review has buried its verdict long before the end.'},
+    {name:'maxpool(H)',x:212,tip:'<b>Element-wise max over every time step.</b> Catches the strongest activation anywhere in the document, e.g. one decisive word in the middle of a long paragraph.'},
+    {name:'meanpool(H)',x:394,tip:'<b>Average over every time step.</b> The document\'s overall tone, robust to any single word.'}
+  ];
+  const lastX=x0+(words.length-.5)*cw, lastTop=base-(16+sig[8]*44);
+  // connectors: last state -> h_T box; whole span -> pooled boxes
+  svg.appendChild(el('path',{d:`M${lastX} ${lastTop} C ${lastX} 60, 105 80, 105 42`,fill:'none',stroke:'var(--warm)','stroke-width':'1.5'}));
+  const spanL=x0+6,spanR=x0+words.length*cw-6;
+  svg.appendChild(el('path',{d:`M${spanL} ${base-70} v-8 H${spanR} v8`,fill:'none',stroke:'var(--ice-deep)','stroke-width':'1',opacity:'.6'}));
+  [287,469].forEach(px=>svg.appendChild(el('path',{d:`M${(spanL+spanR)/2} ${base-78} L${px} 42`,fill:'none',stroke:'var(--ice-deep)','stroke-width':'1',opacity:'.6'})));
+  parts.forEach(p=>{const g=el('g',{'data-tip':p.tip,tabindex:'0'});g.appendChild(el('rect',{x:p.x,y:14,width:150,height:28,rx:'6',fill:'var(--warm-soft)',stroke:'var(--warm)'}));g.appendChild(txt(p.x+75,32,p.name,{'text-anchor':'middle','font-size':'12','fill':'var(--warm-deep)','font-weight':'500'}));svg.appendChild(g);});
+  svg.appendChild(txt(W-20,32,'→ head',{'text-anchor':'end','font-size':'11','fill':'var(--dim)'}));
+  host.appendChild(svg);bindTips(host);
+})();
+
+/* ---------- ABLATION ---------- */
+const DS=[{n:'IMDb',size:'25k reviews · 2 classes · a few paragraphs each'},{n:'TREC-6',size:'5.5k questions · 6 classes · one sentence each'},{n:'AG',size:'120k news articles · 4 classes'}];
+const ABL={
+  clf:{title:'Table 7',rows:[
+    ['From scratch',[9.93,13.36,6.81],'No pretrained LM at all. Random init, same architecture.'],
+    ['Full',[6.87,6.86,5.81],'Unfreeze every layer at once, one learning rate. Fast start, then forgetting.'],
+    ['Full + discr',[5.57,6.21,5.62],'Same, but lower layers get ÷2.6 per layer.'],
+    ['Last',[6.49,16.09,8.38],'Train only the top layer, the standard CV recipe. Severely underfits text models; never reaches zero training error.'],
+    ['Chain-thaw',[5.39,6.71,5.90],'Thaw one layer at a time, refreezing the rest (Felbo et al., 2017). Competitive on small data, weak on large.'],
+    ['Freez',[6.37,6.86,5.81],'Gradual unfreezing alone, flat rate.'],
+    ['Freez + discr',[5.39,5.86,6.04],'Gradual unfreezing with discriminative rates.'],
+    ['Freez + stlr',[5.04,6.02,5.35],'Gradual unfreezing with the slanted triangular schedule.'],
+    ['Freez + cos',[5.70,6.38,5.29],'Gradual unfreezing with aggressive cosine annealing instead of STLR. Wins on large AG, loses on small data.'],
+    ['ULMFiT (all three)',[5.00,5.69,5.38],'Gradual unfreezing + discriminative rates + STLR. Best on IMDb and TREC-6, close on AG: the only method good everywhere.']
+  ],take:['Only one setup is strong on all three sizes. Discriminative rates help most on small data; on large AG a flat rate is fine.','"Last" collapses here: with 5.5k examples, training only the top layer cannot fit the task. Discriminative rates and STLR matter most on small data.','On big data most reasonable options land within half a point; cosine annealing even edges ahead. The recipe\'s value is robustness, not a win everywhere.']},
+  lm:{title:'Table 6',rows:[
+    ['No LM fine-tuning',[6.99,6.38,6.09],'Skip stage b: go straight from Wikipedia LM to classifier.'],
+    ['Full',[5.86,6.54,5.61],'Fine-tune the LM on your text with a single flat rate.'],
+    ['Full + discr',[5.55,6.36,5.47],'Add discriminative rates.'],
+    ['Full + discr + stlr',[5.00,5.69,5.38],'Add the slanted triangular schedule. The ULMFiT setting.']
+  ],take:['Fine-tuning the LM on target text pays off on medium data, and each dial adds a bit more.','On tiny TREC-6, plain LM fine-tuning is actually slightly worse than skipping it; it only helps once the rates are disciplined.','Largest benefit of stage b shows up on larger datasets with more domain text to learn from.']},
+  pre:{title:'Table 4',rows:[
+    ['Without pretraining',[5.63,10.67,5.52],'Skip Wikipedia entirely; fine-tune from random init with the same techniques.'],
+    ['With pretraining',[5.00,5.69,5.38],'Start from the WikiText-103 language model.']
+  ],take:['Pretraining helps even when 25k labeled reviews are available.','Pretraining nearly halves the error on the small dataset. This is where transfer learning earns its keep.','Even with 120k examples, pretraining still helps, just modestly.']}
+};
+let ablT='clf',ablD=0;
+function renderAbl(){
+  const tbl=ABL[ablT];const host=$('#ablRows');host.innerHTML='';
+  const vals=tbl.rows.map(r=>r[1][ablD]);const mx=Math.max(...vals),mn=Math.min(...vals);
+  tbl.rows.forEach(r=>{const v=r[1][ablD];const row=document.createElement('div');row.className='abl-row'+(v===mn?' best':'')+(v===mx&&tbl.rows.length>2?' worst':'');row.setAttribute('data-tip',`<b>${r[0]}</b> · ${r[2]}`);
+    row.innerHTML=`<span class="name">${r[0]}</span><div class="track"><div class="fill" style="width:${(v/mx*100).toFixed(1)}%"></div></div><span class="val">${v.toFixed(2)}%</span>`;host.appendChild(row);});
+  $('#ablDataNote').textContent=DS[ablD].n+' · '+DS[ablD].size+' · validation error, '+tbl.title;
+  $('#ablTake').textContent=tbl.take[ablD];
+  bindTips(host);
+}
+$$('#ablTable button').forEach(b=>b.addEventListener('click',()=>{ablT=b.dataset.t;$$('#ablTable button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderAbl();}));
+$$('#ablData button').forEach(b=>b.addEventListener('click',()=>{ablD=+b.dataset.d;$$('#ablData button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderAbl();}));
+renderAbl();
+
+/* ---------- FORGETTING CURVES (illustrative) ---------- */
+(function(){
+  const host=$('#forgetFig');const W=560,H=230,pl=44,pr=14,pt=16,pb=30,E=50;
+  const full=e=>8.5-3.2*Math.exp(-e/1.2)+0.06*e+0.5*(1-Math.exp(-e/6));       // dips fast then climbs
+  const ulm=e=>{const base=5.0+5.5*Math.exp(-e/4.5);return base-0.25*(1-Math.exp(-e/20));}; // slow start, keeps improving
+  const ys=[...Array(E+1).keys()];
+  const fv=ys.map(full),uv=ys.map(ulm);const minF=Math.min(...fv),argF=fv.indexOf(minF);
+  const ymin=4,ymax=11;
+  const sx=e=>pl+(e/E)*(W-pl-pr),sy=v=>pt+(1-(v-ymin)/(ymax-ymin))*(H-pt-pb);
+  let shown=E;let timer=null;
+  function draw(){
+    const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Validation error over epochs, full fine-tuning versus ULMFiT'});
+    svg.appendChild(el('line',{x1:pl,y1:sy(ymin),x2:W-pr,y2:sy(ymin),stroke:'var(--rule)'}));
+    [5,7,9,11].forEach(v=>{svg.appendChild(el('line',{x1:pl,y1:sy(v),x2:W-pr,y2:sy(v),stroke:'var(--rule)'}));svg.appendChild(txt(pl-6,sy(v)+4,v+'%',{'text-anchor':'end','font-size':'11','fill':'var(--dim)'}));});
+    [0,10,20,30,40,50].forEach(e=>svg.appendChild(txt(sx(e),H-10,e,{'text-anchor':'middle','font-size':'11','fill':'var(--dim)'})));
+    svg.appendChild(txt(W-pr,H-10,'epochs',{'text-anchor':'end','font-size':'11','fill':'var(--dim)'}));
+    const path=(vals,col,w,dash)=>{let d='';for(let e=0;e<=shown;e++)d+=(e?'L':'M')+sx(e).toFixed(1)+' '+sy(vals[e]).toFixed(1)+' ';svg.appendChild(el('path',{d,fill:'none',stroke:col,'stroke-width':w,'stroke-dasharray':dash||'0','stroke-linejoin':'round'}));};
+    path(fv,'var(--bad)',2.5);path(uv,'var(--warm)',3);
+    if(shown>=argF){svg.appendChild(el('circle',{cx:sx(argF),cy:sy(minF),r:'4',fill:'var(--bad)'}));svg.appendChild(txt(sx(argF)+8,sy(minF)-8,'best early, then forgets',{'font-size':'11','fill':'var(--bad)'}));}
+    svg.appendChild(txt(sx(shown)+6,sy(fv[shown])+4,shown===E?'Full':'',{'font-size':'12','fill':'var(--bad)','font-weight':'500'}));
+    svg.appendChild(txt(sx(shown)+6,sy(uv[shown])+4,shown===E?'ULMFiT':'',{'font-size':'12','fill':'var(--warm-deep)','font-weight':'500'}));
+    // hover
+    const cursor=el('g',{opacity:'0'});const vl=el('line',{y1:pt,y2:sy(ymin),stroke:'var(--dim)'});const d1=el('circle',{r:'4',fill:'var(--bad)'});const d2=el('circle',{r:'4',fill:'var(--warm)'});cursor.appendChild(vl);cursor.appendChild(d1);cursor.appendChild(d2);svg.appendChild(cursor);
+    const ov=el('rect',{x:pl,y:pt,width:W-pl-pr,height:H-pt-pb,fill:'transparent'});svg.appendChild(ov);
+    const read=$('#forgetRead');
+    const mv=ev=>{const r=svg.getBoundingClientRect();const px=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;const e=Math.max(0,Math.min(shown,Math.round((px/r.width*W-pl)/(W-pl-pr)*E)));cursor.setAttribute('opacity','1');vl.setAttribute('x1',sx(e));vl.setAttribute('x2',sx(e));d1.setAttribute('cx',sx(e));d1.setAttribute('cy',sy(fv[e]));d2.setAttribute('cx',sx(e));d2.setAttribute('cy',sy(uv[e]));
+      let note='';if(e<=1)note='Full starts ahead: every layer is already useful. ULMFiT is only training the head.';else if(e<=argF+1)note='Full hits its best; a practitioner early-stopping here would call it done.';else if(e<15)note='Full is drifting up as pretrained features get overwritten.';else note='ULMFiT is still gaining, no forgetting.';
+      read.innerHTML=`epoch ${e} · <span style="color:var(--bad)">Full ${fv[e].toFixed(1)}%</span> · <span style="color:var(--warm-deep)">ULMFiT ${uv[e].toFixed(1)}%</span> · <span class="muted">${note}</span>`;};
+    ov.addEventListener('mousemove',mv);ov.addEventListener('touchmove',ev=>{mv(ev);ev.preventDefault();},{passive:false});ov.addEventListener('touchstart',mv,{passive:true});
+    ov.addEventListener('mouseleave',()=>{cursor.setAttribute('opacity','0');read.innerHTML='&nbsp;';});
+    host.innerHTML='';host.appendChild(svg);
+  }
+  draw();
+  $('#forgetPlay').addEventListener('click',()=>{if(timer){clearInterval(timer);timer=null;shown=E;draw();$('#forgetPlay').textContent='Play';return;}
+    shown=0;draw();$('#forgetPlay').textContent='Stop';timer=setInterval(()=>{shown+=1;if(shown>=E){shown=E;clearInterval(timer);timer=null;$('#forgetPlay').textContent='Play';}draw();},reduced?20:70);});
+})();
+
+/* ---------- RESULTS ---------- */
+const RES=[
+  {n:'IMDb',size:'25k',rows:[['CoVe (McCann et al.)',8.2],['oh-LSTM (Johnson & Zhang)',5.9],['Virtual adversarial (Miyato et al.)',5.9],['ULMFiT',4.6]],note:'Error cut 43.9% vs CoVe, the previous best transfer method. Dai & Le\'s 2015 LM fine-tuning got 7.64% here.'},
+  {n:'TREC-6',size:'5.5k',rows:[['CoVe',4.2],['TBCNN',4.0],['LSTM-CNN',3.9],['ULMFiT',3.6]],note:'Not statistically significant: the test set has only 500 questions. But single-sentence inputs work as well as long reviews.'},
+  {n:'AG',size:'120k',rows:[['Char-level CNN',9.51],['CNN',6.57],['DPCNN',6.87],['ULMFiT',5.01]],note:'Topic classification of news, four classes. Biggest headline reduction among the large datasets.'},
+  {n:'DBpedia',size:'560k',rows:[['Char-level CNN',1.55],['CNN',0.84],['DPCNN',0.88],['ULMFiT',0.80]],note:'Fourteen-class ontology labels. Already near-solved, so small gains.'},
+  {n:'Yelp-bi',size:'560k',rows:[['Char-level CNN',4.88],['CNN',2.90],['DPCNN',2.64],['ULMFiT',2.16]],note:'Binary sentiment on Yelp reviews.'},
+  {n:'Yelp-full',size:'650k',rows:[['Char-level CNN',37.95],['CNN',32.39],['DPCNN',30.58],['ULMFiT',29.98]],note:'Five-star prediction, a hard task where every model errs on a third of reviews.'}
+];
+let resI=0;const resSeg=$('#resData');
+RES.forEach((d,i)=>{const b=document.createElement('button');b.textContent=d.n;b.setAttribute('aria-pressed',String(i===0));b.addEventListener('click',()=>{resI=i;$$('button',resSeg).forEach((x,j)=>x.setAttribute('aria-pressed',String(j===i)));renderRes();});resSeg.appendChild(b);});
+function renderRes(){
+  const d=RES[resI];const host=$('#resFig');host.innerHTML='';
+  const mx=Math.max(...d.rows.map(r=>r[1]));const prior=Math.min(...d.rows.slice(0,-1).map(r=>r[1]));const ulm=d.rows[d.rows.length-1][1];
+  d.rows.forEach(r=>{const row=document.createElement('div');row.className='abl-row'+(r[0]==='ULMFiT'?' best':'');row.setAttribute('data-tip',`<b>${r[0]}</b> · test error ${r[1]}% on ${d.n}`);
+    row.innerHTML=`<span class="name">${r[0]}</span><div class="track"><div class="fill" style="width:${(r[1]/mx*100).toFixed(1)}%"></div></div><span class="val">${r[1]}%</span>`;host.appendChild(row);});
+  const red=(prior-ulm)/prior*100;
+  $('#resBig').textContent='-'+red.toFixed(1)+'%';
+  $('#resNote').textContent=`${d.n} · ${d.size} training examples · ${prior}% → ${ulm}%. ${d.note}`;
+  $('#resFormula').innerHTML=
+    `<span class="fl">error reduction = (best prior - ULMFiT) / best prior</span>`+
+    `<span class="fl">= (${prior} - ${ulm}) / ${prior} = <b>${red.toFixed(1)}%</b></span>`;
+  bindTips(host);
+}
+renderRes();
+
+/* ---------- LOW-SHOT ---------- */
+const LOW={IMDb:{sup:10,semi:100,unl:'50k unlabeled reviews'},AG:{sup:20,semi:50,unl:'100k unlabeled articles'}};
+let lowD='IMDb',lowM='sup';
+function renderLow(){
+  const k=LOW[lowD][lowM];const host=$('#lowFig');host.innerHTML='';
+  const W=380,H=130;const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Label efficiency'});
+  const a1=100,a2=100*k;const s2=Math.sqrt(a2/a1);const side2=Math.min(110,10*s2);const side1=side2/s2;
+  const y=H-14;
+  svg.appendChild(el('rect',{x:20,y:y-side1,width:side1,height:side1,fill:'var(--warm)',rx:'2'}));
+  svg.appendChild(txt(20,y+12,'ULMFiT: 100 labels',{'font-size':'11','fill':'var(--warm-deep)','font-weight':'500'}));
+  const x2=190;svg.appendChild(el('rect',{x:x2,y:y-side2,width:side2,height:side2,fill:'var(--ice)',rx:'3'}));
+  svg.appendChild(txt(x2,y+12,`from scratch: ${(100*k).toLocaleString()} labels`,{'font-size':'11','fill':'var(--ice-text)','font-weight':'500'}));
+  svg.appendChild(txt(x2+side2/2,y-side2/2+5,k+'×',{'text-anchor':'middle','font-size':'20','fill':'var(--ice-text)','font-weight':'500'}));
+  svg.appendChild(txt(x2-10,y-side2/2+5,'≈',{'text-anchor':'end','font-size':'18','fill':'var(--dim)'}));
+  host.appendChild(svg);
+  $('#lowNote').textContent=lowM==='sup'?`Same validation error as training from scratch on ${k}× more labeled data.`:`Fine-tuning the LM on ${LOW[lowD].unl} first (no labels needed) makes 100 labels worth ${k}×.`;
+}
+$$('#lowData button').forEach(b=>b.addEventListener('click',()=>{lowD=b.dataset.d;$$('#lowData button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderLow();}));
+$$('#lowMode button').forEach(b=>b.addEventListener('click',()=>{lowM=b.dataset.m;$$('#lowMode button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderLow();}));
+renderLow();
+
+bindTips();
+})();
+</script>
+</body>
+</html>
