@@ -164,6 +164,32 @@ input[type=range]::-moz-range-thumb{
 #compRow input[type=range]::-webkit-slider-thumb{ border-color:var(--compare); }
 #compRow input[type=range]::-moz-range-thumb{ border-color:var(--compare); }
 
+/* ---------- dose units ---------- */
+.units{ padding:15px 16px; margin:0 0 14px; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; }
+.units .fld{ width:110px; }
+.conv{
+  font:11px/1.7 var(--mono); letter-spacing:.04em; color:var(--dim);
+  flex:1 1 260px; min-width:220px; padding-bottom:2px;
+}
+.conv b{ color:var(--bio); font-weight:500; }
+
+/* ---------- injection editor ---------- */
+.editor{ padding:15px 16px; margin:10px 0 0; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; }
+.editor[hidden]{ display:none; }
+.ed-title{ font:11px/1.4 var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--text); flex-basis:100%; margin:0; }
+.ed-title b{ color:var(--bio); font-weight:500; }
+.editor .fld{ width:120px; }
+.ed-note{ font:10.5px/1.6 var(--mono); letter-spacing:.04em; color:var(--dim); flex-basis:100%; margin:0; }
+.ed-acts{ border-left:1px solid var(--rule); padding-left:16px; }
+.editor .seg button{ white-space:nowrap; }
+@media (max-width:620px){ .ed-acts{ border-left:0; padding-left:0; } }
+#edApply{ border-color:var(--bio); color:var(--bio); }
+#edClear:disabled{ opacity:.4; cursor:default; }
+.statnote{ font:10.5px/1.6 var(--mono); letter-spacing:.04em; color:var(--dim); margin:-6px 0 14px; }
+.chip.custom{ border-color:var(--text); color:var(--text); }
+.chip.custom .mg{ color:var(--text); font-weight:500; }
+.sw-c{ width:2px; height:12px; display:inline-block; background:var(--text); }
+
 /* ---------- toggles ---------- */
 .tgls{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
 .tgl{
@@ -257,7 +283,7 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
     <h1>One injection a week, and a body that <em>takes a month to catch up.</em></h1>
     <p class="lede">This is a <strong>synthesis</strong>, not a close reading: it assembles the published pharmacokinetics of tirzepatide into a working model you can move. A half-life near five days and a dosing interval of seven means each injection lands on top of what is left of the previous ones. Levels climb for weeks after nothing about the prescription has changed, and the standard escalation ladder restarts that climb every time the dose goes up.</p>
     <p class="lede">The curve below is <strong>modelled milligrams in the body</strong>, not a blood test. It is a quantity no laboratory reports and this page does not predict one. What it is good for is shape: how long the climb lasts, how deep a missed injection cuts, and how much of the sawtooth is real.</p>
-    <p class="disclaimer">This page describes mechanism. It is not medical advice, it is not a dosing tool, and reading it creates no clinical relationship. Dosing, escalation, missed doses, and every safety question belong with your own prescriber, who knows things about you that a population average cannot.</p>
+    <p class="disclaimer">This page describes mechanism. It is not medical advice, it is not a dosing tool, and reading it creates no clinical relationship. Dosing, escalation, missed doses, and every safety question belong with your own prescriber, who knows things about you that a population average cannot. The custom doses and click counts below are yours to type: the model draws exactly what you enter and has no opinion on whether a schedule is sensible, and the pen's own instructions do not cover partial doses.</p>
   </header>
 
   <h2 class="sec">The model, running <span>set the schedule</span></h2>
@@ -273,13 +299,25 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
     </div>
   </div>
 
+  <div class="card units">
+    <div>
+      <div class="lbl">Dose entry</div>
+      <div class="seg"><button id="uMg" class="on" aria-pressed="true">mg</button><button id="uClicks" aria-pressed="false">clicks</button></div>
+    </div>
+    <label id="penRow" hidden><div class="lbl">Pen strength, mg</div><input class="fld" type="number" id="penMg" value="5" min="0.1" max="30" step="0.1"></label>
+    <label id="cpdRow" hidden><div class="lbl">Clicks per full dose</div><input class="fld" type="number" id="clicksPerDose" value="60" min="1" max="500" step="1"></label>
+    <div class="conv" id="convOut"></div>
+  </div>
+
   <div class="stats">
     <div class="card stat"><div class="k">In the body now</div><div class="v" style="color:var(--now)" id="stNow">-</div></div>
     <div class="card stat"><div class="k">Of steady-state average</div><div class="v" id="stPct">-</div></div>
     <div class="card stat"><div class="k">Steady state at target</div><div class="v" id="stSS">-</div></div>
     <div class="card stat"><div class="k">Peak in window</div><div class="v" id="stPeak">-</div></div>
     <div class="card stat"><div class="k">Settling time</div><div class="v" id="stTss">-</div></div>
+    <div class="card stat" id="stDeltaCard" hidden><div class="k">Peak vs no custom doses</div><div class="v" id="stDelta">-</div></div>
   </div>
+  <p class="statnote" id="statNote" hidden></p>
 
   <div class="card chartcard">
     <div class="legend" id="legend"></div>
@@ -287,9 +325,25 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
     <div id="tip"></div>
   </div>
 
-  <div class="lbl" style="margin-top:18px">Injections · select one to simulate skipping it</div>
+  <div class="lbl" style="margin-top:18px">Injections · select one to change its dose or skip it</div>
   <div class="chips" id="chips"></div>
   <p class="resetline" id="resetLine"></p>
+
+  <div class="card editor" id="editor" hidden>
+    <p class="ed-title" id="edTitle"></p>
+    <label><div class="lbl" id="edUnitLbl">Dose, mg</div><input class="fld" type="number" id="edDose" min="0" max="100" step="0.05"></label>
+    <div>
+      <div class="lbl">Apply to</div>
+      <div class="seg"><button id="edOne" class="on" aria-pressed="true">this one</button><button id="edOnward" aria-pressed="false">this and later</button></div>
+    </div>
+    <div class="seg ed-acts">
+      <button id="edApply">set dose</button>
+      <button id="edSkip">skip</button>
+      <button id="edClear">clear</button>
+      <button id="edClose">close</button>
+    </div>
+    <p class="ed-note" id="edNote"></p>
+  </div>
 
   <h2 class="sec">The parameters <span>and where each one comes from</span></h2>
 
@@ -343,6 +397,9 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
       <tr><td data-l="Quantity">Apparent clearance</td><td class="num" data-l="Value here">0.061 L/h</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Section 12.3. Used here only as a cross-check: 0.061 divided by the 10.3 L apparent volume gives a half-life of 4.9 days, which agrees with the stated 5.</td></tr>
       <tr><td data-l="Quantity">Apparent volume</td><td class="num" data-l="Value here">10.3 L</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Section 12.3, mean apparent steady-state volume in type 2 diabetes. Not used to draw the curve.</td></tr>
       <tr><td data-l="Quantity">Escalation ladder</td><td class="num" data-l="Value here">+2.5 mg / 4 wk</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Section 2.1: start at 2.5 mg weekly, increase to 5 mg after 4 weeks, then in 2.5 mg increments after at least 4 weeks on the current dose, to a maximum of 15 mg.</td></tr>
+      <tr><td data-l="Quantity">Doses per KwikPen</td><td class="num" data-l="Value here">4</td><td data-l="Tier"><span class="tier measured">Measured</span></td><td data-l="Where it comes from">Mounjaro KwikPen Instructions for Use. The pen is a multi-dose device holding four fixed 0.6 mL doses, one weekly, and its dose knob clicks.</td></tr>
+      <tr><td data-l="Quantity">Clicks per full dose</td><td class="num" data-l="Value here">yours to set</td><td data-l="Tier"><span class="tier chosen">Chosen</span></td><td data-l="Where it comes from">No click count for a partial dose is published. Lilly states the Instructions for Use give no instructions for dialing less than the full fixed dose, and that it cannot recommend splitting a pen because this has not been studied. The default of 60 is a reader-supplied figure, not a label figure, and every dose is converted to mg before the model sees it.</td></tr>
+      <tr><td data-l="Quantity">Custom per-injection doses</td><td class="num" data-l="Value here">off by default</td><td data-l="Tier"><span class="tier chosen">Chosen</span></td><td data-l="Where it comes from">Superposition lets the model sum injections of any size, so an arbitrary schedule is a property of the arithmetic rather than of the evidence. The 2.5 mg ladder is the only schedule with trial data behind it; anything you type is drawn faithfully and endorsed by nothing.</td></tr>
       <tr><td data-l="Quantity">Number of compartments</td><td class="num" data-l="Value here">1</td><td data-l="Tier"><span class="tier simplif">Simplified</span></td><td data-l="Where it comes from">The published population model is two-compartment (Schneck 2024). One compartment reproduces accumulation and the weekly sawtooth but flattens the early distribution phase after each injection.</td></tr>
       <tr><td data-l="Quantity">Between-person variability</td><td class="num" data-l="Value here">none</td><td data-l="Tier"><span class="tier simplif">Simplified</span></td><td data-l="Where it comes from">Every curve here is one population-average person. Body weight is the largest covariate in the published model and is not represented at all.</td></tr>
     </tbody>
@@ -355,6 +412,7 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
     <p>Each injection contributes a rise over roughly one to two days followed by a slow decline, and the curve is the sum of every injection so far. Because seven days is only about 1.4 half-lives, most of a dose is still present when the next one arrives. Levels therefore climb until what goes in each week equals what is cleared each week, which takes four to five half-lives: <strong>roughly 20 to 25 days at a five-day half-life</strong>. The label states the same thing from the measurement side, that steady-state concentrations were reached after four weeks of once-weekly dosing.</p>
     <p>Settling does not mean flat. At 5 mg weekly with a five-day half-life the model puts the steady-state average near 4.1 mg, with the weekly peak around 5.5 mg and the trough just under 2.6 mg: a swing of more than two to one across a single week. That ratio is set almost entirely by the interval divided by the half-life, which is why the interval slider moves the sawtooth far more than the half-life slider does.</p>
     <p>The escalation ladder is the part people underestimate. Every step up restarts a shorter version of the same climb, so someone titrating from 2.5 to 15 mg is not at their final exposure until roughly a month after the final increase, which can be five or six months after the first injection. Turn the ladder off and set the target directly to see the difference between the two stories.</p>
+    <p>Changing a single week is the mirror image of skipping one, and the model is worth consulting before intuition is. Set a course running, edit one injection, and the <em>peak vs no custom doses</em> readout says exactly what that week bought: at a five-day half-life most of the change has washed out a fortnight later, and the steady-state line does not move at all, because steady state is a property of the dose you keep repeating rather than of any one injection. A course that is nine weeks into 2.5 mg is already near its plateau, so a single larger week reads as a bump on a settled curve rather than a new level. Whether that is a good idea is a question about tolerability and about you, and the model holds no view on either.</p>
     <p>Skipping one injection carves a dip that refills over about two weeks rather than resetting anything, which is the single most useful intuition the model offers. <strong>It is also where the model is weakest</strong>: it says nothing about tolerability, which is what actually governs escalation and what actually happens when someone restarts after a gap. A pharmacokinetic curve is not a clinical plan.</p>
     <p>Three further limits worth holding onto. The vertical axis is amount in the body, not plasma concentration, so it cannot be compared against any assay result. The single compartment smooths a distribution phase that the published two-compartment model resolves, which mostly affects the first day or two after each injection. And there is no variability: real exposure at a fixed dose spans a wide range across people, with body weight the dominant driver, so the height of this curve is the least trustworthy thing on the screen. The <em>shape</em> is what survives.</p>
   </div>
@@ -364,12 +422,14 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
     <ul>
       <li>MOUNJARO (tirzepatide) injection, US Prescribing Information, Eli Lilly and Company. Sections 2.1 and 12.3. <a href="https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=d2d7da5d-ad07-4228-955f-cf7e355c8cc0">DailyMed</a> <em>- half-life, bioavailability, t-max, clearance, volume, and the escalation ladder all come from here.</em></li>
       <li>ZEPBOUND (tirzepatide) injection, US Prescribing Information, Eli Lilly and Company. <a href="https://www.accessdata.fda.gov/drugsatfda_docs/label/2026/217806s042lbl.pdf">accessdata.fda.gov</a> <em>- same molecule under the obesity indication, same pharmacokinetics section.</em></li>
+      <li>MOUNJARO KwikPen Instructions for Use, Eli Lilly and Company. <a href="https://pi.lilly.com/ca/mounjaro-ca-ifu-kp.pdf">pi.lilly.com</a> <em>- the multi-dose pen: four fixed doses per pen, and the clicking dose knob the click controls on this page refer to.</em></li>
+      <li>Eli Lilly and Company. Can I split a dose of Mounjaro into smaller doses? <a href="https://www.lilly.com/en-ca/medicines/medicine-faqs/mounjaro-kwikpen/smaller-doses">lilly.com</a> <em>- the manufacturer's position that the Instructions for Use do not cover dialing less than a full dose and that splitting has not been studied. This is why the click conversion is marked Chosen rather than Measured.</em></li>
       <li>Schneck K, et al. 2024. Population pharmacokinetics of the GIP/GLP receptor agonist tirzepatide. CPT: Pharmacometrics and Systems Pharmacology. <a href="https://doi.org/10.1002/psp4.13099">doi:10.1002/psp4.13099</a> <em>- the two-compartment population model this page deliberately simplifies, and the source for body weight as the dominant covariate.</em></li>
       <li>Urva S, et al. 2021. Effects of Renal Impairment on the Pharmacokinetics of the Dual GIP and GLP-1 Receptor Agonist Tirzepatide. Clinical Pharmacokinetics. <a href="https://doi.org/10.1007/s40262-021-01012-2">doi:10.1007/s40262-021-01012-2</a> <em>- why the model carries no renal term.</em></li>
       <li>European Medicines Agency, Mounjaro European Public Assessment Report. <a href="https://www.ema.europa.eu/en/medicines/human/EPAR/mounjaro">ema.europa.eu</a> <em>- a second regulatory reading of the same pharmacokinetic package.</em></li>
       <li>Gibaldi M, Perrier D. 1982. Pharmacokinetics, 2nd edition. Marcel Dekker. <em>- the one-compartment first-order absorption equation and the superposition principle used to stack repeated doses.</em></li>
     </ul>
-    <p class="note">Scope: this page models the shape of tirzepatide accumulation under repeated subcutaneous dosing. The pharmacokinetic constants are label figures and are attributable to the sources above. Everything the curve displays is a computed consequence of those constants under a deliberately simplified one-compartment model applied to a single population-average person, not a measurement, not a prediction for any individual, and not comparable to a laboratory result. Nothing here is medical advice.</p>
+    <p class="note">Scope: this page models the shape of tirzepatide accumulation under repeated subcutaneous dosing. The pharmacokinetic constants are label figures and are attributable to the sources above. Everything the curve displays is a computed consequence of those constants under a deliberately simplified one-compartment model applied to a single population-average person, not a measurement, not a prediction for any individual, and not comparable to a laboratory result. Custom doses, click conversions, and edited schedules are reader input: the model draws them faithfully and vouches for none of them, and no schedule other than the label ladder has trial evidence behind it. Nothing here is medical advice.</p>
   </section>
 
 </div>
@@ -384,7 +444,8 @@ var STEP_MG = 2.5;         /* escalation increment, PI 2.1 */
 var LADDER_WEEKS = 4;      /* minimum weeks on a dose before increasing, PI 2.1 */
 
 var C = { curve:"#4FD1A5", compare:"#2BD6D6", now:"#F0A93B", miss:"#E0645E",
-          rule:"#1F2630", ruleLit:"#39434F", dim:"#7D8794", ink:"#0B0E13" };
+          rule:"#1F2630", ruleLit:"#39434F", dim:"#7D8794", ink:"#0B0E13",
+          text:"#E6E9ED" };
 
 /* ---------------- state ---------------- */
 var S = {
@@ -392,8 +453,15 @@ var S = {
   targetMg: 5, intervalDays: 7, halfLife: 5, tmaxHours: 34,
   windowDays: 90, compareMg: 10,
   escalate: true, skipped: new Set(),
-  showDoses: true, showSS: true, showCompare: false
+  showDoses: true, showSS: true, showCompare: false,
+  unit: "mg", penMg: 5, clicksPerDose: 60,
+  overrides: new Map(),      /* injection index -> mg, set by hand */
+  editing: null, edScope: "one"
 };
+
+/* Overrides are written out to this many injections so that widening the
+   window from 90 to 180 days does not silently drop a "this and later" edit. */
+var MAX_INJ = 400;
 
 var $ = function (id) { return document.getElementById(id); };
 
@@ -404,19 +472,41 @@ function defaultStart() {
   return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
 }
 
+/* ---------------- dose units ----------------
+   The KwikPen holds four fixed doses and its knob clicks, but no click count
+   for a partial dose is published anywhere: the conversion below is whatever
+   the reader enters. The model itself only ever works in mg. */
+function mgPerClick() {
+  var cpd = S.clicksPerDose > 0 ? S.clicksPerDose : 1;
+  return S.penMg / cpd;
+}
+function toMg(v) { return S.unit === "clicks" ? v * mgPerClick() : v; }
+function fromMg(mg) { return S.unit === "clicks" ? mg / mgPerClick() : mg; }
+function unitName() { return S.unit === "clicks" ? "clicks" : "mg"; }
+
+/* "2.50 mg" in mg mode, "30 clicks · 2.50 mg" in clicks mode. */
+function fmtDose(mg) {
+  if (S.unit !== "clicks") return mg.toFixed(2) + " mg";
+  var c = fromMg(mg);
+  return (Math.abs(c - Math.round(c)) < 0.05 ? String(Math.round(c)) : c.toFixed(1))
+       + " clicks · " + mg.toFixed(2) + " mg";
+}
+
 /* ---------------- model ---------------- */
 
 /* Injection times and amounts. With the ladder on, the dose starts at 2.5 mg
    and rises by 2.5 mg every LADDER_WEEKS weeks until it reaches the target. */
-function schedule(target, intervalDays, days, escalate, skipped) {
+function schedule(target, intervalDays, days, escalate, skipped, overrides) {
   var perStep = Math.max(1, Math.round((LADDER_WEEKS * 7) / intervalDays));
   var out = [];
   for (var i = 0; ; i++) {
     var day = i * intervalDays;
     if (day > days + 1e-9) break;
     var mg = escalate ? Math.min(target, STEP_MG * (1 + Math.floor(i / perStep))) : target;
-    out.push({ index: i, day: +day.toFixed(3), mg: +mg.toFixed(2), skipped: skipped.has(i) });
-    if (i > 400) break;
+    var custom = !!(overrides && overrides.has(i));
+    if (custom) mg = overrides.get(i);
+    out.push({ index: i, day: +day.toFixed(3), mg: +mg.toFixed(3), skipped: skipped.has(i), custom: custom });
+    if (i > MAX_INJ) break;
   }
   return out;
 }
@@ -491,13 +581,22 @@ function render() {
   var g = geo();
   var PW = g.W - g.ML - g.MR, PH = g.H - g.MT - g.MB;
 
-  var doses = schedule(S.targetMg, S.intervalDays, S.windowDays, S.escalate, S.skipped);
+  var doses = schedule(S.targetMg, S.intervalDays, S.windowDays, S.escalate, S.skipped, S.overrides);
   var main = buildSeries(doses, S.halfLife, S.tmaxHours, S.windowDays);
   var comp = null;
   if (S.showCompare) {
-    comp = buildSeries(schedule(S.compareMg, S.intervalDays, S.windowDays, S.escalate, S.skipped),
+    /* The comparison answers "what if the target had been X all along", so it
+       deliberately carries no custom doses. */
+    comp = buildSeries(schedule(S.compareMg, S.intervalDays, S.windowDays, S.escalate, S.skipped, null),
                        S.halfLife, S.tmaxHours, S.windowDays);
   }
+  /* Shadow run with the custom doses stripped out, so the page can say what
+     they actually changed rather than asserting it. */
+  var nOver = countOverridesInWindow(doses);
+  var base = nOver
+    ? buildSeries(schedule(S.targetMg, S.intervalDays, S.windowDays, S.escalate, S.skipped, null),
+                  S.halfLife, S.tmaxHours, S.windowDays)
+    : null;
 
   var ssAvg = F_BIO * S.targetMg / (main.ke * S.intervalDays);
   var compSS = comp ? F_BIO * S.compareMg / (comp.ke * S.intervalDays) : 0;
@@ -525,6 +624,22 @@ function render() {
   var tssLo = Math.round(4 * S.halfLife), tssHi = Math.round(5 * S.halfLife);
   $("stTss").innerHTML = tssLo + " to " + tssHi + '<span class="u">days</span>';
 
+  var basePeak = 0;
+  if (base) { for (i = 0; i < base.pts.length; i++) if (base.pts[i].amt > basePeak) basePeak = base.pts[i].amt; }
+  $("stDeltaCard").hidden = !nOver;
+  if (nOver) {
+    var dPeak = peak - basePeak;
+    $("stDelta").innerHTML = (dPeak >= 0 ? "+" : "") + dPeak.toFixed(2) + '<span class="u">mg</span>';
+    $("stDelta").style.color = Math.abs(dPeak) < 0.005 ? C.dim : (dPeak > 0 ? C.now : C.compare);
+  }
+  $("statNote").hidden = !nOver;
+  if (nOver) {
+    $("statNote").textContent =
+      "Steady state and settling time above describe the target dose repeating forever. "
+      + nOver + " custom dose" + (nOver > 1 ? "s" : "") + " in this window do not move either number, "
+      + "which is the point: one changed week is a bump on a curve the schedule still governs.";
+  }
+
   /* ---- legend ---- */
   var lg = "";
   lg += '<span class="it" style="color:' + C.curve + '"><span class="sw-h" style="background:' + C.curve + '"></span>'
@@ -533,6 +648,7 @@ function render() {
       + (S.escalate ? "ladder to " : "") + S.compareMg + " mg</span>";
   if (nowIn) lg += '<span class="it" style="color:' + C.now + '"><span class="sw-v" style="background:' + C.now + '"></span>now, ' + esc(fmtStamp(new Date())) + "</span>";
   if (S.showDoses) lg += '<span class="it" style="color:' + C.dim + '"><span class="sw-v" style="background:' + C.curve + ';opacity:.45"></span>injections</span>';
+  if (S.showDoses && nOver) lg += '<span class="it" style="color:' + C.dim + '"><span class="sw-c"></span>custom dose</span>';
   $("legend").innerHTML = lg;
 
   /* ---- svg ---- */
@@ -557,10 +673,11 @@ function render() {
   if (S.showDoses) {
     for (i = 0; i < main.doses.length; i++) {
       var dd = main.doses[i];
-      var h = dd.skipped ? PH : (PH * 0.10 + PH * 0.10 * (dd.mg / Math.max(S.targetMg, 0.1)));
+      var rel = Math.min(2, dd.mg / Math.max(S.targetMg, 0.1));
+      var h = dd.skipped ? PH : (PH * 0.10 + PH * 0.10 * rel);
       s += '<line x1="' + X(dd.day).toFixed(1) + '" y1="' + (g.MT + PH - h).toFixed(1) + '" x2="' + X(dd.day).toFixed(1) + '" y2="' + (g.MT + PH) + '" stroke="'
-         + (dd.skipped ? C.miss : C.curve) + '" stroke-opacity="' + (dd.skipped ? 0.5 : 0.45) + '"'
-         + (dd.skipped ? ' stroke-dasharray="3 3"' : "") + "/>";
+         + (dd.skipped ? C.miss : dd.custom ? C.text : C.curve) + '" stroke-opacity="' + (dd.skipped ? 0.5 : dd.custom ? 0.85 : 0.45) + '"'
+         + (dd.skipped ? ' stroke-dasharray="3 3"' : "") + (dd.custom ? ' stroke-width="1.6"' : "") + "/>";
     }
   }
 
@@ -596,24 +713,38 @@ function render() {
   var ch = "";
   for (i = 0; i < main.doses.length; i++) {
     var c = main.doses[i];
-    ch += '<button class="chip' + (c.skipped ? " skip" : "") + '" data-i="' + c.index
-       + '" aria-pressed="' + (c.skipped ? "true" : "false")
-       + '" title="' + esc((c.skipped ? "Skipped: " : "Injection ") + (c.index + 1) + ", " + fmtDate(dayToDate(c.day)) + ", " + c.mg + " mg") + '">'
-       + (c.index + 1) + " · " + esc(fmtDate(dayToDate(c.day))) + ' <span class="mg">' + c.mg + "</span></button>";
+    ch += '<button class="chip' + (c.skipped ? " skip" : c.custom ? " custom" : "") + '" data-i="' + c.index
+       + '" aria-pressed="' + (S.editing === c.index ? "true" : "false")
+       + '" title="' + esc((c.skipped ? "Skipped: " : c.custom ? "Custom: " : "Injection ") + (c.index + 1)
+                           + ", " + fmtDate(dayToDate(c.day)) + ", " + fmtDose(c.mg)) + '">'
+       + (c.index + 1) + " · " + esc(fmtDate(dayToDate(c.day)))
+       + ' <span class="mg">' + (+c.mg.toFixed(2)) + "</span></button>";
   }
   $("chips").innerHTML = ch;
-  $("resetLine").innerHTML = S.skipped.size
-    ? S.skipped.size + " injection" + (S.skipped.size > 1 ? "s" : "") + " skipped. <button id=\"resetSkips\">restore all</button>"
+
+  var bits = [];
+  if (S.skipped.size) bits.push(S.skipped.size + " skipped");
+  if (nOver) bits.push(nOver + " custom");
+  $("resetLine").innerHTML = bits.length
+    ? bits.join(", ") + ' in this window. <button id="resetAll">reset the schedule</button>'
     : "";
-  if ($("resetSkips")) $("resetSkips").addEventListener("click", function () { S.skipped.clear(); render(); });
+  if ($("resetAll")) $("resetAll").addEventListener("click", function () {
+    S.skipped.clear(); S.overrides.clear(); closeEditor(); render();
+  });
+
+  drawEditor(main.doses);
 
   /* ---- control readouts ---- */
   $("doseLabel").textContent = S.escalate ? "Target dose" : "Dose per injection";
-  $("vDose").textContent = S.targetMg.toFixed(1) + " mg";
+  $("vDose").textContent = fmtDose(S.targetMg);
   $("vInt").textContent = S.intervalDays + " days";
   $("vHl").textContent = S.halfLife.toFixed(2) + " days";
   $("vTmax").textContent = S.tmaxHours + " h";
-  $("vComp").textContent = S.compareMg.toFixed(1) + " mg";
+  $("vComp").textContent = fmtDose(S.compareMg);
+  $("convOut").innerHTML = S.unit === "clicks"
+    ? 'mg = clicks × (pen mg ÷ clicks per full dose)<br>one click = <b>' + mgPerClick().toFixed(4)
+      + ' mg</b> at ' + S.penMg + ' mg / ' + S.clicksPerDose + ' clicks'
+    : "";
 
   /* ---- live formula ---- */
   var firstAtTarget = null;
@@ -622,16 +753,103 @@ function render() {
   }
   $("formula").innerHTML =
     'one-compartment model, first-order absorption and elimination\n\n'
+  + (S.unit === "clicks"
+      ? '  mg = clicks * (pen_mg / clicks_per_dose)      <b>' + mgPerClick().toFixed(4) + ' mg/click</b>   <i>pen ' + S.penMg + ' mg, ' + S.clicksPerDose + ' clicks per full dose</i>\n'
+      : '')
   + '  k_e  = ln2 / t_half                          <b>' + main.ke.toFixed(4) + ' /day</b>   <i>t_half = ' + S.halfLife.toFixed(2) + ' d</i>\n'
   + '  t_max(k_a) = ln(k_a / k_e) / (k_a - k_e)     <b>k_a = ' + main.ka.toFixed(3) + ' /day</b>   <i>solved for t_max = ' + S.tmaxHours + ' h</i>\n'
   + '  A(t) = sum over injections i already given of\n'
   + '           F * D_i * k_a/(k_a - k_e) * ( exp(-k_e*u) - exp(-k_a*u) ),   u = t - t_i\n'
-  + '                                               <i>F = ' + F_BIO.toFixed(2) + ', ' + main.doses.filter(function (x) { return !x.skipped; }).length + ' injections in window</i>\n'
+  + '                                               <i>F = ' + F_BIO.toFixed(2) + ', ' + main.doses.filter(function (x) { return !x.skipped; }).length + ' injections in window'
+  + (nOver ? ', ' + nOver + ' with a dose you set' : '') + '</i>\n'
   + '  A_ss = F * D / (k_e * interval)              <b>' + ssAvg.toFixed(2) + ' mg</b>   <i>D = ' + S.targetMg.toFixed(1) + ' mg, interval = ' + S.intervalDays + ' d</i>\n'
+  + (nOver
+      ? '  peak(with custom) - peak(without)            <b>' + ((peak - basePeak) >= 0 ? '+' : '') + (peak - basePeak).toFixed(2) + ' mg</b>   <i>same schedule, custom doses removed</i>\n'
+      : '')
   + '  t_ss ~ 4 to 5 half-lives                     <b>' + tssLo + ' to ' + tssHi + ' days</b>'
   + (S.escalate && firstAtTarget
       ? '   <i>from injection ' + (firstAtTarget.index + 1) + ', the first at ' + S.targetMg.toFixed(1) + ' mg</i>'
       : '   <i>from the first injection</i>');
+
+  writeHash();
+}
+
+/* ---------------- injection editor ---------------- */
+
+/* Only overrides on injections the current window actually contains are
+   counted, so widening or narrowing the window never misreports. */
+function countOverridesInWindow(doses) {
+  var n = 0;
+  for (var i = 0; i < doses.length; i++) if (doses[i].custom) n++;
+  return n;
+}
+
+function baseDoseAt(index) {
+  var perStep = Math.max(1, Math.round((LADDER_WEEKS * 7) / S.intervalDays));
+  return S.escalate ? Math.min(S.targetMg, STEP_MG * (1 + Math.floor(index / perStep))) : S.targetMg;
+}
+
+function closeEditor() { S.editing = null; }
+
+/* "This and later" writes explicit overrides rather than a rule, so that
+   widening the window from 90 to 180 days cannot silently drop them. It stops
+   at the 180-day horizon: writing to MAX_INJ would work but would put several
+   hundred entries in the URL for no gain. */
+function onwardLimit() { return Math.ceil(180 / Math.max(1, S.intervalDays)) + 1; }
+
+function drawEditor(doses) {
+  var box = $("editor");
+  if (S.editing == null) { box.hidden = true; return; }
+  var d = null, i;
+  for (i = 0; i < doses.length; i++) if (doses[i].index === S.editing) { d = doses[i]; break; }
+  if (!d) { box.hidden = true; return; }
+  box.hidden = false;
+
+  $("edTitle").innerHTML = "Injection <b>" + (d.index + 1) + "</b> · " + esc(fmtDate(dayToDate(d.day)))
+    + " · currently " + esc(d.skipped ? "skipped" : fmtDose(d.mg))
+    + (d.custom ? " · set by hand" : " · from the schedule");
+  $("edUnitLbl").textContent = "Dose, " + unitName();
+
+  var inp = $("edDose");
+  if (document.activeElement !== inp) {
+    var v = fromMg(d.mg);
+    inp.value = S.unit === "clicks" ? String(Math.round(v * 10) / 10) : String(+v.toFixed(2));
+  }
+  inp.step = S.unit === "clicks" ? "1" : "0.05";
+
+  $("edClear").disabled = !d.custom && !d.skipped;
+  $("edSkip").textContent = d.skipped ? "un-skip" : "skip";
+
+  $("edNote").textContent = S.edScope === "one"
+    ? "Sets this injection only. The rest of the course keeps whatever the ladder or the target dose gives it."
+    : "Sets this injection and every later one out to six months, so a changed dose carries forward until you clear it.";
+}
+
+function applyDose() {
+  if (S.editing == null) return;
+  var raw = parseFloat($("edDose").value);
+  if (!isFinite(raw) || raw < 0) return;
+  var mg = Math.min(100, toMg(raw));
+  if (S.edScope === "one") {
+    S.overrides.set(S.editing, mg);
+  } else {
+    var lim = onwardLimit();
+    for (var i = S.editing; i <= lim; i++) S.overrides.set(i, mg);
+  }
+  S.skipped.delete(S.editing);
+  render();
+}
+
+function clearOverride() {
+  if (S.editing == null) return;
+  if (S.edScope === "one") {
+    S.overrides.delete(S.editing);
+  } else {
+    var from = S.editing;
+    Array.from(S.overrides.keys()).forEach(function (k) { if (k >= from) S.overrides.delete(k); });
+  }
+  S.skipped.delete(S.editing);
+  render();
 }
 
 /* ---------------- pointer readout ---------------- */
@@ -670,8 +888,82 @@ chartEl.addEventListener("touchstart", function (e) { readout(e.touches[0].clien
 chartEl.addEventListener("touchmove", function (e) { readout(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
 chartEl.addEventListener("touchend", hideReadout);
 
+/* ---------------- schedule in the URL ----------------
+   No storage is used anywhere on this site, so the address bar is the only
+   place a schedule can survive a reload. Everything here is derived from the
+   controls; nothing is sent anywhere. */
+function writeHash() {
+  var q = [];
+  q.push("sd=" + S.startDate, "st=" + S.startTime);
+  q.push("d=" + S.targetMg, "i=" + S.intervalDays, "hl=" + S.halfLife, "tm=" + S.tmaxHours);
+  q.push("w=" + S.windowDays, "esc=" + (S.escalate ? 1 : 0));
+  if (S.unit === "clicks") q.push("u=clicks", "pen=" + S.penMg, "cpd=" + S.clicksPerDose);
+  if (S.skipped.size) q.push("sk=" + Array.from(S.skipped).sort(function (a, b) { return a - b; }).join(","));
+  if (S.overrides.size) {
+    var ov = [];
+    Array.from(S.overrides.keys()).sort(function (a, b) { return a - b; })
+      .forEach(function (k) { ov.push(k + ":" + (+S.overrides.get(k).toFixed(3))); });
+    q.push("ov=" + ov.join(","));
+  }
+  var h = "#" + q.join("&");
+  if (h !== location.hash) history.replaceState(null, "", location.pathname + location.search + h);
+}
+
+function readHash() {
+  var raw = location.hash.replace(/^#/, "");
+  if (!raw) return;
+  var q = {};
+  raw.split("&").forEach(function (kv) {
+    var j = kv.indexOf("=");
+    if (j > 0) q[kv.slice(0, j)] = decodeURIComponent(kv.slice(j + 1));
+  });
+  var num = function (k, lo, hi, cur) {
+    var v = parseFloat(q[k]);
+    return (isFinite(v) && v >= lo && v <= hi) ? v : cur;
+  };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(q.sd || "")) S.startDate = q.sd;
+  if (/^\d{2}:\d{2}$/.test(q.st || "")) S.startTime = q.st;
+  S.targetMg = num("d", 2.5, 15, S.targetMg);
+  S.intervalDays = num("i", 3, 14, S.intervalDays);
+  S.halfLife = num("hl", 4, 7, S.halfLife);
+  S.tmaxHours = num("tm", 8, 72, S.tmaxHours);
+  S.windowDays = q.w === "180" ? 180 : 90;
+  if (q.esc === "0") S.escalate = false;
+  if (q.u === "clicks") {
+    S.unit = "clicks";
+    S.penMg = num("pen", 0.1, 30, S.penMg);
+    S.clicksPerDose = num("cpd", 1, 500, S.clicksPerDose);
+  }
+  if (q.sk) q.sk.split(",").forEach(function (x) {
+    var i = parseInt(x, 10);
+    if (isFinite(i) && i >= 0 && i <= MAX_INJ) S.skipped.add(i);
+  });
+  if (q.ov) q.ov.split(",").forEach(function (pair) {
+    var bits = pair.split(":"), i = parseInt(bits[0], 10), mg = parseFloat(bits[1]);
+    if (isFinite(i) && i >= 0 && i <= MAX_INJ && isFinite(mg) && mg >= 0 && mg <= 100) S.overrides.set(i, mg);
+  });
+}
+
 /* ---------------- wiring ---------------- */
+readHash();
 $("startDate").value = S.startDate;
+$("startTime").value = S.startTime;
+$("targetMg").value = S.targetMg;
+$("intervalDays").value = S.intervalDays;
+$("halfLife").value = S.halfLife;
+$("tmaxHours").value = S.tmaxHours;
+$("penMg").value = S.penMg;
+$("clicksPerDose").value = S.clicksPerDose;
+if (S.unit === "clicks") {
+  $("uMg").classList.remove("on"); $("uMg").setAttribute("aria-pressed", "false");
+  $("uClicks").classList.add("on"); $("uClicks").setAttribute("aria-pressed", "true");
+  $("penRow").hidden = false; $("cpdRow").hidden = false;
+}
+if (!S.escalate) { $("tEsc").classList.remove("on"); $("tEsc").setAttribute("aria-pressed", "false"); }
+if (S.windowDays === 180) {
+  $("w180").classList.add("on"); $("w180").setAttribute("aria-pressed", "true");
+  $("w90").classList.remove("on"); $("w90").setAttribute("aria-pressed", "false");
+}
 
 function bindRange(id, key, parse) {
   $(id).addEventListener("input", function (e) { S[key] = (parse || parseFloat)(e.target.value); render(); });
@@ -697,8 +989,55 @@ $("chips").addEventListener("click", function (e) {
   var b = e.target.closest(".chip");
   if (!b) return;
   var i = parseInt(b.dataset.i, 10);
-  if (S.skipped.has(i)) S.skipped.delete(i); else S.skipped.add(i);
+  S.editing = (S.editing === i) ? null : i;
   render();
+  if (S.editing === i) $("edDose").focus();
+});
+
+$("edApply").addEventListener("click", applyDose);
+$("edClear").addEventListener("click", clearOverride);
+$("edClose").addEventListener("click", function () { closeEditor(); render(); });
+$("edSkip").addEventListener("click", function () {
+  if (S.editing == null) return;
+  if (S.skipped.has(S.editing)) S.skipped.delete(S.editing); else S.skipped.add(S.editing);
+  render();
+});
+$("edDose").addEventListener("keydown", function (e) {
+  if (e.key === "Enter") { e.preventDefault(); applyDose(); }
+});
+
+function setScope(scope) {
+  S.edScope = scope;
+  var one = scope === "one";
+  $("edOne").classList.toggle("on", one);
+  $("edOne").setAttribute("aria-pressed", String(one));
+  $("edOnward").classList.toggle("on", !one);
+  $("edOnward").setAttribute("aria-pressed", String(!one));
+  render();
+}
+$("edOne").addEventListener("click", function () { setScope("one"); });
+$("edOnward").addEventListener("click", function () { setScope("onward"); });
+
+function setUnit(unit) {
+  S.unit = unit;
+  var mg = unit === "mg";
+  $("uMg").classList.toggle("on", mg);
+  $("uMg").setAttribute("aria-pressed", String(mg));
+  $("uClicks").classList.toggle("on", !mg);
+  $("uClicks").setAttribute("aria-pressed", String(!mg));
+  $("penRow").hidden = mg;
+  $("cpdRow").hidden = mg;
+  render();
+}
+$("uMg").addEventListener("click", function () { setUnit("mg"); });
+$("uClicks").addEventListener("click", function () { setUnit("clicks"); });
+$("penMg").addEventListener("input", function (e) {
+  var v = parseFloat(e.target.value);
+  if (isFinite(v) && v > 0) { S.penMg = v; render(); }
+});
+$("clicksPerDose").addEventListener("input", function (e) {
+  var v = parseInt(e.target.value, 10);
+  if (isFinite(v) && v > 0) { S.clicksPerDose = v; render(); }
 });
 
 function wireToggle(id, key, after) {
