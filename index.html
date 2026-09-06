@@ -209,7 +209,7 @@
     <div class="sec-head">
       <span class="sec-name">Cyber</span>
       <span class="sec-desc">Security, protocols, and internet standards - what is actually mandated, and what implementations do instead.</span>
-      <span class="sec-count">2</span>
+      <span class="sec-count">3</span>
     </div>
 
     <a class="entry" href="/cyber/rfc9110-attack-surface.html">
@@ -217,6 +217,14 @@
       <div>
         <h2>RFC 9110 · HTTP semantics read as attack surface</h2>
         <p>Walk one state-changing exchange field by field, then filter 33 header fields, 31 status codes, and all 16 named security considerations by whether the standard requires the behaviour or the folklore just assumes it.</p>
+      </div>
+    </a>
+
+    <a class="entry" href="/cyber/http-desync.html">
+      <div class="src">Kettle 2025</div>
+      <div>
+        <h2>The desync endgame · HTTP/1.1 request smuggling from probe to report</h2>
+        <p>Set the parsing rule each end applies, drag the byte where the back-end thinks the request ended, and watch a smuggled prefix land in front of somebody else's cookie.</p>
       </div>
     </a>
 
