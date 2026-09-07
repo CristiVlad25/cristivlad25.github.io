@@ -84,13 +84,15 @@ from the hub is invisible.
 Two dash rules that are easy to confuse. They are different characters doing
 different jobs, and both are strict.
 
-- **Never use an em dash (—) or an en dash (–). Anywhere.** Not in page copy, not in
-  headings, not in code comments, not in this file. Use a plain hyphen `-` instead,
-  including for parenthetical breaks and numeric ranges. If a draft contains one,
-  replace it before committing. This applies to text written by a model as much as
-  text written by hand, and it is the single most frequently violated rule here.
-  Grep for the escaped forms too - `—` and `–` inside a JS string render
-  as dashes and are invisible to a search for the character itself.
+- **Never use an em dash (U+2014) or an en dash (U+2013). Anywhere.** Not in page
+  copy, not in headings, not in code comments, not in this file, which is why the
+  two characters are named here by codepoint rather than printed. Use a plain
+  hyphen `-` instead, including for parenthetical breaks and numeric ranges. If a
+  draft contains one, replace it before committing. This applies to text written by
+  a model as much as text written by hand, and it is the single most frequently
+  violated rule here. The escaped forms count too: `\u2014` and `\u2013` in a JS
+  string, and `&mdash;` and `&ndash;` in markup, all render as dashes and are
+  invisible to a search for the character itself.
 - **The middle dot `·` separates a title from its subtitle**, and is the one piece of
   non-ASCII punctuation the site uses: `Tirzepatide · Dual-Channel Receptor Atlas`.
   Not a hyphen, not a colon. It also separates items in a mono anchor or scope line:
@@ -118,6 +120,39 @@ letterspaced in caps. No other families.
 Section accent is determined by folder; a bio page never borrows another section's
 color. Inside an artifact, a working palette for data encoding is fine where the
 subject demands it, but nav, rules, and body text stay on these tokens.
+
+## Converting a light-theme artifact
+
+Most artifacts arrive light. Swapping the palette for the site tokens is the easy
+part. These are the failures that only appear *after* the swap, and each has
+shipped at least once.
+
+- **Form elements do not inherit colour.** `button{font-family:inherit}` leaves
+  `color` at the user agent default, which is black: fine on a light page,
+  invisible on `--ink`. Set `color:inherit` on `button, input, select, textarea`,
+  and look specifically for headings that live inside a button, because they fail
+  silently and the surrounding text does not.
+- **Text on a filled accent flips.** A light theme puts `#fff` on a mid-dark
+  accent. The site's accents are bright, so white on them is unreadable. Use
+  `--ink` for text on any filled badge, circle or pill.
+- **`--x-bg` tints are rebuilt, not translated.** A light theme's `--amber-bg` is
+  an opaque pale wash. On dark it becomes a low-alpha tint of the accent over
+  `--ink`, and text on it must be checked against the *composited* result rather
+  than against the tint's own colour.
+- **Fixed heights break when the type changes.** A box pinned at `height:90px`
+  around captions that reflow in a different face will overflow onto whatever
+  follows it. Let those boxes size to their content.
+- **Do not invent a third grey.** Light themes often carry three text levels. This
+  site has two, `--text` and `--dim`, and separates everything else by size,
+  weight and caps. A third, dimmer grey lands near 3:1 and fails AA.
+- **Delete the theme branches.** `prefers-color-scheme`, `data-theme` and any light
+  fallback go. The site is dark only, and a half-removed branch renders differently
+  for some readers than for you.
+
+Then audit rather than eyeball. Walk every tab and panel, including the ones hidden
+behind a click, and compute contrast for each text node against its composited
+background with alpha applied. Real text under 4.5:1 is a bug. The one accepted
+exception is the nav separator, which is decorative and identical site-wide.
 
 ## Editorial standards
 
@@ -280,10 +315,18 @@ interrogable, not a summary of the subject.
 Static files only - no package.json, build config, workflow, or anything needing
 compilation. Then check; each of these has shipped broken at least once:
 
-- Grep the diff for `—`, `–`, `—`, `–`. Any hit is a bug.
+- Grep the changed pages for dashes in every form they arrive in. Any hit is a bug.
+  This matches on raw bytes, so it works whatever the shell's locale is:
+  ```
+  grep -nP '\xe2\x80[\x93\x94]|&mdash;|&ndash;|\\u201[34]' <page files>
+  ```
+  Run it on the pages, not on this file: CLAUDE.md matches itself, because the rule
+  above has to name the escaped forms in order to ban them.
 - Load the page with JavaScript off. Headline, framing, and sources must be there.
 - Head block complete: `<title>`, description, `og:title`, `og:description`, `og:type`.
 - The index `<h2>` is character-for-character the page's `<title>`, and the entry
   exists at all. Page background is `--ink`.
 - The sources block is a `details.drop` with a `Sources` summary, every link
   resolves, and the scope note and any disclaimer sit outside it.
+- If the page arrived light, work the conversion checklist above. None of what it
+  lists is visible until the palette is already dark.
