@@ -16,7 +16,7 @@
   /* Site tokens carry the chrome; the lane and severity colours below are a
      working palette for data encoding, which a five-party timeline needs. */
   --bg:#0B0E13; --panel:#10141B; --panel-2:#161B24; --border:#1F2630; --border-strong:#39434F;
-  --ink:#E6E9ED; --ink-2:#7D8794; --ink-3:#5A646F;
+  --ink:#E6E9ED; --ink-2:#7D8794; --ink-3:#7D8794;
   --cyber:#6D9BFF;
   --amber:#F5A623; --amber-bg:rgba(245,166,35,.12);
   --red:#F2545B;   --red-bg:rgba(242,84,91,.12);
@@ -42,7 +42,7 @@ a{color:var(--cyber);}
 h1,h2,h3,h4{font-family:var(--serif); font-weight:700; margin:0 0 .4em 0; letter-spacing:-0.015em;}
 p{margin:0 0 .8em 0;}
 .mono{font-family:var(--mono);}
-button{font-family:inherit; cursor:pointer;}
+button{font-family:inherit; color:inherit; cursor:pointer;}
 .wrap{max-width:1180px; margin:0 auto; padding:0 20px;}
 
 /* ---------- Header ---------- */
@@ -113,6 +113,7 @@ h3.sub{font-size:1.05rem; margin-bottom:14px;}
 }
 .phase-tab .n{font-family:var(--mono); font-size:.7rem; color:var(--ink-3);}
 .phase-tab.active{border-color:var(--amber); color:var(--ink); background:var(--amber-bg); font-weight:600;}
+.phase-tab.active .n{color:var(--ink);}
 .phase-blurb{font-size:.86rem; color:var(--ink-2); margin-bottom:16px; max-width:680px;}
 .phase-blurb .range{font-family:var(--mono); font-size:.72rem; color:var(--ink-3); display:block; margin-bottom:3px;}
 
@@ -175,6 +176,8 @@ h3.sub{font-size:1.05rem; margin-bottom:14px;}
 .chain-card.open .chain-body{max-height:300px;}
 .chain-body-inner{padding:0 14px 14px 14px; font-size:.85rem; color:var(--ink-2); border-top:1px dashed var(--border);}
 .chain-body-inner .cve{font-family:var(--mono); font-size:.72rem; color:var(--red); margin-top:6px; display:block;}
+.chain-head.static{cursor:default;}
+.chain-head.static:disabled{opacity:1;}
 
 /* ---------- Alignment ---------- */
 .align-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;}
@@ -186,12 +189,12 @@ h3.sub{font-size:1.05rem; margin-bottom:14px;}
 .mini-stat div{text-align:center;}
 .mini-stat .v{font-family:var(--serif); font-size:1.5rem; font-weight:600;}
 .mini-stat .l{font-size:.68rem; color:var(--ink-3); max-width:100px;}
-.bar-compare{display:flex; align-items:flex-end; gap:22px; height:90px; margin:14px 0 6px;}
-.bar-col{display:flex; flex-direction:column; align-items:center; gap:6px; width:70px;}
+.bar-compare{display:flex; align-items:flex-end; flex-wrap:wrap; gap:22px; margin:14px 0 10px;}
+.bar-col{display:flex; flex-direction:column; align-items:center; gap:6px; width:112px;}
 .bar-track{width:36px; background:var(--panel-2); border:1px solid var(--border); height:70px; display:flex; align-items:flex-end; border-radius:2px 2px 0 0; overflow:hidden;}
 .bar-fill{width:100%; border-radius:2px 2px 0 0;}
 .bar-col .pct{font-family:var(--mono); font-size:.78rem; font-weight:600;}
-.bar-col .lbl{font-size:.68rem; color:var(--ink-3); text-align:center;}
+.bar-col .lbl{font-size:.68rem; line-height:1.45; color:var(--ink-3); text-align:center;}
 .trend-chip{display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius:20px; padding:6px 12px; font-size:.76rem; color:var(--ink-2); margin:6px 0;}
 .example-quote{background:var(--panel-2); border-left:3px solid var(--violet); padding:10px 14px; font-size:.83rem; color:var(--ink-2); border-radius:2px; margin-top:10px;}
 .callout{background:var(--green-bg); border:1px solid var(--green); border-radius:3px; padding:16px 18px; margin-top:6px;}
@@ -759,14 +762,31 @@ CHAIN.forEach(act=>{
     const card = document.createElement('div'); card.className='chain-card';
     const num = document.createElement('div'); num.className='chain-num'; num.textContent = String(ci).padStart(2,'0');
     card.appendChild(num);
+    /* Split on a period followed by whitespace so decimals and paths survive. */
+    const m = item.o.match(/^([\s\S]*?\.)\s+([\s\S]+)$/);
+    const teaser = m ? m[1] : item.o;
+    const rest = m ? m[2] : '';
+    const expandable = !!(rest || item.cve);
     const head = document.createElement('button'); head.className='chain-head';
-    head.innerHTML = '<div class="chain-head-text"><h4>'+item.t+'</h4><div class="one-liner">'+item.o.split('.')[0]+'.</div></div>'+
-      '<div class="chain-tags">'+item.tags.map(tg=>'<span class="tag">'+tg+'</span>').join('')+'<span class="chevron">▾</span></div>';
-    head.addEventListener('click', ()=>card.classList.toggle('open'));
+    head.innerHTML = '<div class="chain-head-text"><h4>'+item.t+'</h4><div class="one-liner">'+teaser+'</div></div>'+
+      '<div class="chain-tags">'+item.tags.map(tg=>'<span class="tag">'+tg+'</span>').join('')+
+      (expandable ? '<span class="chevron">\u25BE</span>' : '')+'</div>';
+    if(expandable){
+      head.setAttribute('aria-expanded','false');
+      head.addEventListener('click', ()=>{
+        const open = card.classList.toggle('open');
+        head.setAttribute('aria-expanded', String(open));
+      });
+    } else {
+      head.disabled = true;
+      head.classList.add('static');
+    }
     card.appendChild(head);
-    const body = document.createElement('div'); body.className='chain-body';
-    body.innerHTML = '<div class="chain-body-inner">'+item.o+(item.cve?('<span class="cve">'+item.cve+'</span>'):'')+'</div>';
-    card.appendChild(body);
+    if(expandable){
+      const body = document.createElement('div'); body.className='chain-body';
+      body.innerHTML = '<div class="chain-body-inner">'+rest+(item.cve?('<span class="cve">'+item.cve+'</span>'):'')+'</div>';
+      card.appendChild(body);
+    }
     chainDiv.appendChild(card);
   });
   block.appendChild(chainDiv);
