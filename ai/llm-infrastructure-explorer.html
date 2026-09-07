@@ -87,6 +87,27 @@ noscript{display:block;padding:32px;color:#E6E9ED;font-family:'IBM Plex Sans',sy
   @media (max-width:620px){
     .cv-static,.cv-scope,.cv-sources{padding-left:20px;padding-right:20px}
   }
+
+/* ---------- sources dropdown (matches ai/ulmfit-fine-tuning) ---------- */
+details.drop{ border:1px solid #1F2630; border-radius:3px; background:#10141B; margin:22px 0 0 }
+details.drop summary{
+  cursor:pointer; list-style:none; padding:11px 14px;
+  font:11px/1.6 "IBM Plex Mono",ui-monospace,Menlo,monospace; letter-spacing:.1em; text-transform:uppercase; color:#7D8794;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+details.drop summary::-webkit-details-marker{ display:none }
+details.drop summary::after{ content:"\25BE"; font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace }
+details.drop[open] summary::after{ content:"\25B4" }
+details.drop summary:hover{ color:#E6E9ED }
+details.drop summary:focus-visible{ outline:2px solid #B98CFF; outline-offset:2px }
+details.drop .drop-body{ padding:0 14px 16px; border-top:1px solid #1F2630 }
+details.drop .cite-main{ font:12.4px/1.8 "IBM Plex Mono",ui-monospace,Menlo,monospace; color:#7D8794; margin:14px 0 0;
+  padding-left:12px; border-left:2px solid #B98CFF; max-width:76ch }
+details.drop .drop-body ul,details.drop .drop-body ol{ margin:14px 0 0; padding-left:17px }
+details.drop .drop-body li{ font-size:13.4px; line-height:1.6; color:#7D8794; margin-bottom:9px; max-width:80ch }
+details.drop a{ color:#B98CFF; text-decoration:none; border-bottom:1px solid #1F2630 }
+details.drop a:hover,details.drop a:focus-visible{ border-bottom-color:#B98CFF }
+details.drop em{ font-style:normal; color:#7D8794 }
 </style>
 
 <p class="cv-scope">Synthesis <b>·</b> Training <b>·</b> Serving <b>·</b> Cost <b>·</b> assembled from many sources, not a reading of one paper. Model names and version numbers are hypothetical stand-ins for a 2026-class system, not any vendor's product.</p>
@@ -109,8 +130,10 @@ noscript{display:block;padding:32px;color:#E6E9ED;font-family:'IBM Plex Sans',sy
 <div id="root"></div>
 
 <section class="cv-static cv-sources">
-  <h2>Sources</h2>
-  <ul>
+  <details class="drop">
+    <summary>Sources</summary>
+    <div class="drop-body">
+    <ul>
     <li>Vaswani et al. 2017. Attention Is All You Need. <a href="https://arxiv.org/abs/1706.03762">arXiv:1706.03762</a> <em>- the decoder block the whole stack repeats.</em></li>
     <li>Shazeer et al. 2017. Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. <a href="https://arxiv.org/abs/1701.06538">arXiv:1701.06538</a> <em>- the MoE routing idea.</em></li>
     <li>Shoeybi et al. 2019. Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism. <a href="https://arxiv.org/abs/1909.08053">arXiv:1909.08053</a> <em>- tensor parallelism.</em></li>
@@ -133,7 +156,9 @@ noscript{display:block;padding:32px;color:#E6E9ED;font-family:'IBM Plex Sans',sy
     <li>NVIDIA H100 Tensor Core GPU datasheet, <a href="https://www.nvidia.com/en-us/data-center/h100/">nvidia.com/data-center/h100</a></li>
     <li>NVIDIA H200 Tensor Core GPU datasheet, <a href="https://www.nvidia.com/en-us/data-center/h200/">nvidia.com/data-center/h200</a></li>
     <li>NVIDIA B200 and the Blackwell architecture brief, <a href="https://www.nvidia.com/en-us/data-center/dgx-b200/">nvidia.com/data-center/dgx-b200</a> and <a href="https://resources.nvidia.com/en-us-blackwell-architecture">the Blackwell architecture resources</a></li>
-  </ul>
+  
+    </div>
+    </details>
   <p class="note">Scope: this page describes the shape of a modern training and serving stack and the arithmetic that governs it. Hard numbers are datasheet figures or published results and are attributable to the sources above. Everything else - throughput, prices, latencies, model names - is a representative illustration chosen to make the mechanism concrete, not a measurement of any deployed system.</p>
 </section>
 

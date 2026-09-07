@@ -143,9 +143,64 @@ subject demands it, but nav, rules, and body text stay on these tokens.
   the control. An interactive number with a hidden formula is an assertion wearing
   a costume.
 - **No medical advice.** Biology pages describe mechanism. Dosing, safety, and
-  treatment decisions belong with a clinician, and the page says so.
+  treatment decisions belong with a clinician, and the page says so. **Symptom
+  management counts as a treatment decision** - telling a reader how to handle a
+  side effect is advice even when no dose is named, so describe what a symptom does
+  and let the reader take that to their clinician. The disclaimer itself is never
+  inside a dropdown; a disclaimer behind a closed toggle is not a disclaimer.
 
-### Source readings additionally (in a dropdown toggle v arrow)
+### The sources block
+
+Every page ends its references in the same component, whichever genre it is. That
+component is a `<details class="drop">`, closed by default. The canonical
+implementation is `ai/ulmfit-fine-tuning.html` - copy it from there rather than
+inventing another one.
+
+```html
+<details class="drop">
+  <summary>Sources</summary>
+  <div class="drop-body">
+    <p class="cite-main">ANCHOR CITATION</p>      <!-- source readings only -->
+    <ul>
+      <li>Author A, Author B. Year. Title. Venue volume:pages.
+          <a href="https://doi.org/10.xxxx/yyyy">doi:10.xxxx/yyyy</a>
+          <em>- what this source is carrying on the page.</em></li>
+    </ul>
+  </div>
+</details>
+<p class="scope-out">Scope: ...</p>
+```
+
+The summary caret is `\25BE` closed and `\25B4` open, on the right; the panel takes
+`--panel` on `--rule`, and links and the `.cite-main` left rule take the section
+accent. Style it with literal token hexes if the page's own CSS variables are named
+differently - several pages invert `--ink`.
+
+- **The `<summary>` reads `Sources`.** Same word on every page, so a returning reader
+  knows what a closed panel holds. A source reading may instead name its anchor, as
+  ulmfit does, but nothing longer than that.
+- **A source reading's anchor goes in `.cite-main`**, above the list. A synthesis has
+  no anchor and therefore no `.cite-main`.
+- **Every entry carries a link that resolves** - DOI, arXiv id, or datatracker URL -
+  and you verify it against the publisher before committing. A citation the reader
+  cannot follow is worse than none, and a plausible-looking DOI written from memory is
+  worse still.
+- **Every entry says what it carries**: one clause naming the claim on the page it
+  supports. A bare bibliography does not tell the reader which number came from where.
+- **Naming a kind of source is not citing one.** "Human islet receptor reviews" or
+  "vendor documentation" names a genre, not a document. Cite the document.
+
+**What stays outside the dropdown, always visible:**
+
+- The bottom scope note, as `<p class="scope-out">`.
+- Every disclaimer, and on a biology page the no-medical-advice line especially.
+  A disclaimer behind a closed toggle is not a disclaimer.
+- The evidence-tier key, which the reader needs while reading rather than after.
+
+Collapsing the reference list keeps a long page tight. Collapsing the text that
+qualifies the page hides it.
+
+### Source readings additionally
 
 - Cite the anchor document properly: author-year with DOI or arXiv link; RFC number
   and section with a datatracker link.
@@ -157,11 +212,11 @@ subject demands it, but nav, rules, and body text stay on these tokens.
 - Where popular understanding rests on evidence the document doesn't actually
   provide, say so at the point the claim appears.
 
-### Syntheses additionally (in a dropdown toggle v arrow)
+### Syntheses additionally
 
-- **A reference list at the end**, naming the sources the page actually rests on:
-  papers, specs, vendor documentation, project repositories. Not exhaustive -
-  the ones carrying weight.
+- **A reference list**, in the sources block above, naming what the page actually
+  rests on: papers, specs, vendor documentation, project repositories. Not
+  exhaustive - the ones carrying weight.
 - **A scope note**, top and bottom. The top one tells the reader what kind of page
   this is; the bottom one states what the numbers represent and don't.
 - Techniques with a known origin get named with it - PagedAttention, FlashAttention,
@@ -230,3 +285,5 @@ compilation. Then check; each of these has shipped broken at least once:
 - Head block complete: `<title>`, description, `og:title`, `og:description`, `og:type`.
 - The index `<h2>` is character-for-character the page's `<title>`, and the entry
   exists at all. Page background is `--ink`.
+- The sources block is a `details.drop` with a `Sources` summary, every link
+  resolves, and the scope note and any disclaimer sit outside it.

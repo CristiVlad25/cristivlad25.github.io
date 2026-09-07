@@ -190,6 +190,27 @@
     padding:26px 0;border-top:1px solid var(--rule);}
 
   @media (prefers-reduced-motion: reduce){ .wb *,.wb{animation:none!important;transition:none!important;} }
+
+/* ---------- sources dropdown (matches ai/ulmfit-fine-tuning) ---------- */
+details.drop{ border:1px solid #1F2630; border-radius:3px; background:#10141B; margin:22px 0 0 }
+details.drop summary{
+  cursor:pointer; list-style:none; padding:11px 14px;
+  font:11px/1.6 "IBM Plex Mono",ui-monospace,Menlo,monospace; letter-spacing:.1em; text-transform:uppercase; color:#7D8794;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+details.drop summary::-webkit-details-marker{ display:none }
+details.drop summary::after{ content:"\25BE"; font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace }
+details.drop[open] summary::after{ content:"\25B4" }
+details.drop summary:hover{ color:#E6E9ED }
+details.drop summary:focus-visible{ outline:2px solid #6D9BFF; outline-offset:2px }
+details.drop .drop-body{ padding:0 14px 16px; border-top:1px solid #1F2630 }
+details.drop .cite-main{ font:12.4px/1.8 "IBM Plex Mono",ui-monospace,Menlo,monospace; color:#7D8794; margin:14px 0 0;
+  padding-left:12px; border-left:2px solid #6D9BFF; max-width:76ch }
+details.drop .drop-body ul,details.drop .drop-body ol{ margin:14px 0 0; padding-left:17px; list-style:none }
+details.drop .drop-body li{ font-size:13.4px; line-height:1.6; color:#7D8794; margin-bottom:9px; max-width:80ch }
+details.drop a{ color:#6D9BFF; text-decoration:none; border-bottom:1px solid #1F2630 }
+details.drop a:hover,details.drop a:focus-visible{ border-bottom-color:#6D9BFF }
+details.drop em{ font-style:normal; color:#7D8794 }
 </style>
 </head>
 <body>
@@ -220,9 +241,9 @@
     <p class="wb-noscript">The nine interactive modules need JavaScript. The framing above and the sources below are the static part of this page.</p>
   </main>
 
-  <details class="wb-refs">
-    <summary>Anchor document and sources</summary>
-    <div class="refs-body">
+  <details class="drop">
+    <summary>Sources</summary>
+    <div class="drop-body">
       <p class="cite">
         Kettle J. 2025. HTTP/1.1 must die: the desync endgame. PortSwigger Research, August 2025.
         <a href="https://portswigger.net/research/http1-must-die">portswigger.net/research/http1-must-die</a>

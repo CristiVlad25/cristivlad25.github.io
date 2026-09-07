@@ -264,6 +264,27 @@ pre.formula i{ color:var(--dim); font-style:normal; }
 noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
 
 @media (prefers-reduced-motion:reduce){ *{ transition:none!important; animation:none!important; } }
+
+/* ---------- sources dropdown (matches ai/ulmfit-fine-tuning) ---------- */
+details.drop{ border:1px solid #1F2630; border-radius:3px; background:#10141B; margin:22px 0 0 }
+details.drop summary{
+  cursor:pointer; list-style:none; padding:11px 14px;
+  font:11px/1.6 "IBM Plex Mono",ui-monospace,Menlo,monospace; letter-spacing:.1em; text-transform:uppercase; color:#7D8794;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+details.drop summary::-webkit-details-marker{ display:none }
+details.drop summary::after{ content:"\25BE"; font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace }
+details.drop[open] summary::after{ content:"\25B4" }
+details.drop summary:hover{ color:#E6E9ED }
+details.drop summary:focus-visible{ outline:2px solid #4FD1A5; outline-offset:2px }
+details.drop .drop-body{ padding:0 14px 16px; border-top:1px solid #1F2630 }
+details.drop .cite-main{ font:12.4px/1.8 "IBM Plex Mono",ui-monospace,Menlo,monospace; color:#7D8794; margin:14px 0 0;
+  padding-left:12px; border-left:2px solid #4FD1A5; max-width:76ch }
+details.drop .drop-body ul,details.drop .drop-body ol{ margin:14px 0 0; padding-left:17px }
+details.drop .drop-body li{ font-size:13.4px; line-height:1.6; color:#7D8794; margin-bottom:9px; max-width:80ch }
+details.drop a{ color:#4FD1A5; text-decoration:none; border-bottom:1px solid #1F2630 }
+details.drop a:hover,details.drop a:focus-visible{ border-bottom-color:#4FD1A5 }
+details.drop em{ font-style:normal; color:#7D8794 }
 </style>
 </head>
 <body>
@@ -418,7 +439,9 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
   </div>
 
   <section class="sources">
-    <h2>Sources</h2>
+    <details class="drop">
+    <summary>Sources</summary>
+    <div class="drop-body">
     <ul>
       <li>MOUNJARO (tirzepatide) injection, US Prescribing Information, Eli Lilly and Company. Sections 2.1 and 12.3. <a href="https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=d2d7da5d-ad07-4228-955f-cf7e355c8cc0">DailyMed</a> <em>- half-life, bioavailability, t-max, clearance, volume, and the escalation ladder all come from here.</em></li>
       <li>ZEPBOUND (tirzepatide) injection, US Prescribing Information, Eli Lilly and Company. <a href="https://www.accessdata.fda.gov/drugsatfda_docs/label/2026/217806s042lbl.pdf">accessdata.fda.gov</a> <em>- same molecule under the obesity indication, same pharmacokinetics section.</em></li>
@@ -428,7 +451,9 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
       <li>Urva S, et al. 2021. Effects of Renal Impairment on the Pharmacokinetics of the Dual GIP and GLP-1 Receptor Agonist Tirzepatide. Clinical Pharmacokinetics. <a href="https://doi.org/10.1007/s40262-021-01012-2">doi:10.1007/s40262-021-01012-2</a> <em>- why the model carries no renal term.</em></li>
       <li>European Medicines Agency, Mounjaro European Public Assessment Report. <a href="https://www.ema.europa.eu/en/medicines/human/EPAR/mounjaro">ema.europa.eu</a> <em>- a second regulatory reading of the same pharmacokinetic package.</em></li>
       <li>Gibaldi M, Perrier D. 1982. Pharmacokinetics, 2nd edition. Marcel Dekker. <em>- the one-compartment first-order absorption equation and the superposition principle used to stack repeated doses.</em></li>
-    </ul>
+    
+    </div>
+    </details>
     <p class="note">Scope: this page models the shape of tirzepatide accumulation under repeated subcutaneous dosing. The pharmacokinetic constants are label figures and are attributable to the sources above. Everything the curve displays is a computed consequence of those constants under a deliberately simplified one-compartment model applied to a single population-average person, not a measurement, not a prediction for any individual, and not comparable to a laboratory result. Custom doses, click conversions, and edited schedules are reader input: the model draws them faithfully and vouches for none of them, and no schedule other than the label ladder has trial evidence behind it. Nothing here is medical advice.</p>
   </section>
 

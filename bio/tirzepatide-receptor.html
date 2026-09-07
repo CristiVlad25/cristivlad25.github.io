@@ -188,6 +188,24 @@ h1 .ch-gip { color: var(--gip); }
   font-family:'IBM Plex Mono',monospace; font-size:10.5px; color: var(--mute); line-height: 1.9;
 }
 .sectionlead { font-size:15px; color: var(--mute); max-width: 66ch; margin: 0 0 18px; }
+
+.refs { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--line); }
+.refs summary {
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.18em;
+  text-transform:uppercase; color: var(--mute); cursor:pointer;
+  list-style:none; display:flex; align-items:center; gap:9px;
+}
+.refs summary::-webkit-details-marker { display:none; }
+.refs summary::before { content:"v"; font-family:'IBM Plex Mono',monospace; color:#4FD1A5; display:inline-block; transition:transform .16s ease; }
+.refs[open] summary::before { transform: rotate(180deg); }
+.refs summary:hover { color: var(--ink); }
+.refs ul { list-style:none; margin:18px 0 0; padding:0; display:grid; gap:11px; }
+.refs li { font-size:13px; line-height:1.6; color: var(--mute); max-width:82ch; }
+.refs a { color: var(--mute); text-decoration:none; border-bottom:1px solid var(--line); }
+.refs a:hover, .refs a:focus-visible { color: var(--ink); }
+.refs em { color: var(--mute); font-style:normal; }
+.refs .note { margin:24px 0 0; max-width:74ch; font-size:12.5px; line-height:1.65; color: var(--mute); }
+.refs summary:focus-visible { outline:2px solid #4FD1A5; outline-offset:2px; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -206,6 +224,29 @@ h1 .ch-gip { color: var(--gip); }
   .cv-nav span{color:#39434F}
   @media (max-width:620px){ .cv-nav{padding:12px 20px} }
   @media (prefers-reduced-motion:reduce){ .cv-nav a{transition:none} }
+
+/* ---------- sources dropdown (matches ai/ulmfit-fine-tuning) ---------- */
+details.drop{ border:1px solid #1F2630; border-radius:3px; background:#10141B; margin:22px 0 0 }
+details.drop summary{
+  cursor:pointer; list-style:none; padding:11px 14px;
+  font:11px/1.6 "IBM Plex Mono",ui-monospace,Menlo,monospace; letter-spacing:.1em; text-transform:uppercase; color:#7D8794;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+details.drop summary::-webkit-details-marker{ display:none }
+details.drop summary::after{ content:"\25BE"; font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace }
+details.drop[open] summary::after{ content:"\25B4" }
+details.drop summary:hover{ color:#E6E9ED }
+details.drop summary:focus-visible{ outline:2px solid #4FD1A5; outline-offset:2px }
+details.drop .drop-body{ padding:0 14px 16px; border-top:1px solid #1F2630 }
+details.drop .cite-main{ font:12.4px/1.8 "IBM Plex Mono",ui-monospace,Menlo,monospace; color:#7D8794; margin:14px 0 0;
+  padding-left:12px; border-left:2px solid #4FD1A5; max-width:76ch }
+details.drop .drop-body ul,details.drop .drop-body ol{ margin:14px 0 0; padding-left:17px; list-style:none }
+details.drop .drop-body li{ font-size:13.4px; line-height:1.6; color:#7D8794; margin-bottom:9px; max-width:80ch }
+details.drop a{ color:#4FD1A5; text-decoration:none; border-bottom:1px solid #1F2630 }
+details.drop a:hover,details.drop a:focus-visible{ border-bottom-color:#4FD1A5 }
+details.drop em{ font-style:normal; color:#7D8794 }
+
+.scope-out{ margin:22px 0 0; max-width:76ch; font-size:12.5px; line-height:1.7; color:#7D8794; }
 </style>
 
 <nav class="cv-nav">
@@ -286,15 +327,30 @@ h1 .ch-gip { color: var(--gip); }
 
     <div class="card pnote">
       <h3>What adapts, and what doesn't</h3>
-      <p>Delayed gastric emptying shows clear tachyphylaxis - pronounced after the first dose, substantially attenuated after about four weekly doses. Appetite suppression, glucose lowering and weight loss do not fade the same way.</p>
-      <p><strong>Consequence:</strong> nausea and reflux are worst early and after each escalation, and genuinely improve. Constipation, driven by enteric neurons along the whole gut, is more persistent - manage it as an ongoing condition rather than waiting it out.</p>
+      <p>Delayed gastric emptying fades with repeated dosing, but less completely than it is usually described. In the four-week phase 1 study the effect was pronounced after the first dose and had largely gone by the end in healthy participants - <strong>but in participants with type 2 diabetes on an escalating schedule a residual delay was still measurable after multiple doses</strong>, which is the population actually taking the drug. Appetite suppression, glucose lowering and weight loss do not fade the same way.</p>
+      <p><strong>Consequence:</strong> nausea and reflux are worst early and after each escalation, and genuinely improve. Constipation, driven by enteric neurons along the whole gut, is more persistent, and unlike the nausea it does not reliably settle on its own.</p>
     </div>
   </section>
 
   <div class="foot">
     <div>Evidence tiers - <span style="color:#7ED09A">human protein / human function</span>: validated antibody, radioligand binding, or measured response in people · <span style="color:#8FB4E8">human transcript</span>: single-cell or single-nucleus RNA sequencing of human tissue · <span style="color:#F0A93B">rodent only</span>: not confirmed in human tissue.</div>
-    <div style="margin-top:8px">Built from validated-antibody mapping of human and monkey tissue (Pyke 2014), human islet receptor reviews, human white adipose single-nucleus atlases, primary human osteoclast and osteoblast work, and tirzepatide receptor pharmacology (Willard 2020). This is a map of the biology, not medical advice - dosing and safety decisions belong with your clinician.</div>
   </div>
+
+  <details class="drop">
+    <summary>Sources</summary>
+    <div class="drop-body">
+    <ul>
+      <li>Pyke C, Heller RS, Kirk RK, Orskov C, Reedtz-Runge S, Kaastrup P, Hvelplund A, Bardram L, Calatayud D, Knudsen LB. 2014. GLP-1 receptor localization in monkey and human tissue: novel distribution revealed with extensively validated monoclonal antibody. Endocrinology 155(4):1280-1290. <a href="https://doi.org/10.1210/en.2013-1934">doi:10.1210/en.2013-1934</a> <em>- the anchor for the GLP-1R map. Its whole point is that an extensively validated antibody finds the receptor in far fewer places than earlier work claimed, which is why this atlas is shorter than the popular story.</em></li>
+      <li>Willard FS, Douros JD, Gabe MB, et al. 2020. Tirzepatide is an imbalanced and biased dual GIP and GLP-1 receptor agonist. JCI Insight 5(17):e140532. <a href="https://doi.org/10.1172/jci.insight.140532">doi:10.1172/jci.insight.140532</a> <em>- the anchor for the pharmacology panel: GIPR affinity matching native GIP, weaker GLP-1R binding, cAMP over beta-arrestin bias, and the species difference at mouse GIPR.</em></li>
+      <li>Urva S, Coskun T, Loghin C, et al. 2020. The novel dual GIP and GLP-1 receptor agonist tirzepatide transiently delays gastric emptying similarly to selective long-acting GLP-1 receptor agonists. Diabetes, Obesity and Metabolism 22(10):1886-1891. <a href="https://doi.org/10.1111/dom.14110">doi:10.1111/dom.14110</a> <em>- the four-week study behind the tachyphylaxis claim, including the residual delay in participants with type 2 diabetes that the simple version of the story leaves out.</em></li>
+      <li>Hansen MS, Soe K, Christensen LL, et al. 2023. GIP reduces osteoclast activity and improves osteoblast survival in primary human bone cells. European Journal of Endocrinology 188(1):144-157. <a href="https://doi.org/10.1093/ejendo/lvac004">doi:10.1093/ejendo/lvac004</a> <em>- GIPR in primary human osteoclasts and osteoblasts, and the reason the bone entries are tiered as human rather than rodent.</em></li>
+      <li>Emont MP, Jacobs C, Essene AL, et al. 2022. A single-cell atlas of human and mouse white adipose tissue. Nature 603:926-933. <a href="https://doi.org/10.1038/s41586-022-04518-2">doi:10.1038/s41586-022-04518-2</a> <em>- the human white adipose single-nucleus reference behind the adipocyte entries, which are transcript-level evidence rather than measured function.</em></li>
+      <li>Sun B, Willard FS, Feng D, et al. 2022. Structural determinants of dual incretin receptor agonism by tirzepatide. PNAS 119(13):e2116506119. <a href="https://doi.org/10.1073/pnas.2116506119">doi:10.1073/pnas.2116506119</a> <em>- how one peptide engages two receptors, and the structural basis of the imbalance the pharmacology panel describes.</em></li>
+    </ul>
+    </div>
+  </details>
+
+  <p class="scope-out">Scope: this atlas covers human cell types with published GLP-1R or GIPR evidence, tiered by what that evidence is. The tiers are the substance of the page: human protein or function claims are checkable against the sources above, transcript-level entries say only that the message is present, and rodent-only entries are marked because they are where the popular account of this drug most often outruns the human data. Effects listed under "where it doesn't bind" are real but indirect, and this page does not attribute them to a receptor. Nothing here is medical advice, and dosing and safety decisions belong with your clinician.</p>
 </div>
 
 <script>

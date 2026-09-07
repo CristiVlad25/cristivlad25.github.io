@@ -126,6 +126,29 @@ a:focus-visible, button:focus-visible, summary:focus-visible{ outline:2px solid 
 noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
 
 @media (prefers-reduced-motion:reduce){ *{ transition:none!important; animation:none!important; scroll-behavior:auto; } }
+
+/* ---------- sources dropdown (matches ai/ulmfit-fine-tuning) ---------- */
+details.drop{ border:1px solid #1F2630; border-radius:3px; background:#10141B; margin:22px 0 0 }
+details.drop summary{
+  cursor:pointer; list-style:none; padding:11px 14px;
+  font:11px/1.6 "IBM Plex Mono",ui-monospace,Menlo,monospace; letter-spacing:.1em; text-transform:uppercase; color:#7D8794;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+details.drop summary::-webkit-details-marker{ display:none }
+details.drop summary::after{ content:"\25BE"; font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace }
+details.drop[open] summary::after{ content:"\25B4" }
+details.drop summary:hover{ color:#E6E9ED }
+details.drop summary:focus-visible{ outline:2px solid #4FD1A5; outline-offset:2px }
+details.drop .drop-body{ padding:0 14px 16px; border-top:1px solid #1F2630 }
+details.drop .cite-main{ font:12.4px/1.8 "IBM Plex Mono",ui-monospace,Menlo,monospace; color:#7D8794; margin:14px 0 0;
+  padding-left:12px; border-left:2px solid #4FD1A5; max-width:76ch }
+details.drop .drop-body ul,details.drop .drop-body ol{ margin:14px 0 0; padding-left:17px; list-style:none }
+details.drop .drop-body li{ font-size:13.4px; line-height:1.6; color:#7D8794; margin-bottom:9px; max-width:80ch }
+details.drop a{ color:#4FD1A5; text-decoration:none; border-bottom:1px solid #1F2630 }
+details.drop a:hover,details.drop a:focus-visible{ border-bottom-color:#4FD1A5 }
+details.drop em{ font-style:normal; color:#7D8794 }
+
+.scope-out{ margin:22px 0 0; max-width:76ch; font-size:12.5px; line-height:1.7; color:#7D8794; }
 </style>
 </head>
 <body>
@@ -188,8 +211,9 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
     <p><strong>Where the model stops being trustworthy.</strong> Every rate is invented, so the speed at which the gradient recovers, the exact height of the readouts, and the shape of the leak curve carry no evidence. The membrane is one idealised patch with unlimited substrate, so nothing here shows what happens when fuel runs out or when supercomplexes reorganise. And the P/O ratio is displayed to two decimals, which is more precision than the underlying convention deserves: the value depends on the translocase cost, the c-ring count of the species, and how much the membrane leaks, all of which are approximations here. The stoichiometry and the ordering are what survive; the numbers with decimal points are for feel.</p>
   </div>
 
-  <details class="refs">
+  <details class="drop">
     <summary>Sources</summary>
+    <div class="drop-body">
     <ul>
       <li>Mitchell P. 1961. Coupling of phosphorylation to electron and hydrogen transfer by a chemi-osmotic type of mechanism. Nature 191:144-148. <a href="https://doi.org/10.1038/191144a0">doi:10.1038/191144a0</a> <em>- the chemiosmotic hypothesis the whole page rests on.</em></li>
       <li>Mitchell P. 1975. The protonmotive Q cycle: a general formulation. FEBS Letters 59:137-139. <a href="https://doi.org/10.1016/0014-5793(75)80359-0">doi:10.1016/0014-5793(75)80359-0</a> <em>- the Q cycle drawn in the Complex III panel.</em></li>
@@ -202,8 +226,10 @@ noscript{ display:block; font-size:13px; color:var(--dim); margin:14px 0; }
       <li>Murphy MP. 2009. How mitochondria produce reactive oxygen species. Biochemical Journal 417:1-13. <a href="https://doi.org/10.1042/BJ20081386">doi:10.1042/BJ20081386</a> <em>- reverse electron transport at Complex I and the superoxide claims in the detail cards.</em></li>
       <li>Nicholls DG, Ferguson SJ. 2013. Bioenergetics 4. Academic Press. <em>- the standard treatment behind the potentials, the proton budget, and the framing of the energy ladder.</em></li>
     </ul>
-    <p class="note">Scope: this page models one idealised inner mitochondrial membrane at steady substrate supply, to show the ordering of the carriers, the proton bookkeeping, and where the conventional ATP yields come from. Stoichiometry, midpoint potentials, structural counts and inhibitor targets are attributable to the sources above. Every rate, every readout scale except the proton-motive force, and the settling behaviour of the gradient are properties of a phenomenological model with chosen coefficients, not measurements and not predictions for any tissue, species or person. Nothing here is medical advice.</p>
+    </div>
   </details>
+
+  <p class="scope-out">Scope: this page models one idealised inner mitochondrial membrane at steady substrate supply, to show the ordering of the carriers, the proton bookkeeping, and where the conventional ATP yields come from. Stoichiometry, midpoint potentials, structural counts and inhibitor targets are attributable to the sources above. Every rate, every readout scale except the proton-motive force, and the settling behaviour of the gradient are properties of a phenomenological model with chosen coefficients, not measurements and not predictions for any tissue, species or person. Nothing here is medical advice.</p>
 
 </div>
 

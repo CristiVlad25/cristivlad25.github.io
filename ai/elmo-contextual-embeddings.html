@@ -255,6 +255,27 @@ details p{ font-size:13.4px; color:var(--dim); margin:8px 0 0; max-width:70ch }
   .tabbtn{ padding:8px 10px; font-size:11px }
   .res-labels{ font-size:10.5px }
 }
+
+/* ---------- sources dropdown (matches ai/ulmfit-fine-tuning) ---------- */
+details.drop{ border:1px solid #1F2630; border-radius:3px; background:#10141B; margin:22px 0 0 }
+details.drop summary{
+  cursor:pointer; list-style:none; padding:11px 14px;
+  font:11px/1.6 "IBM Plex Mono",ui-monospace,Menlo,monospace; letter-spacing:.1em; text-transform:uppercase; color:#7D8794;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+details.drop summary::-webkit-details-marker{ display:none }
+details.drop summary::after{ content:"\25BE"; font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace }
+details.drop[open] summary::after{ content:"\25B4" }
+details.drop summary:hover{ color:#E6E9ED }
+details.drop summary:focus-visible{ outline:2px solid #B98CFF; outline-offset:2px }
+details.drop .drop-body{ padding:0 14px 16px; border-top:1px solid #1F2630 }
+details.drop .cite-main{ font:12.4px/1.8 "IBM Plex Mono",ui-monospace,Menlo,monospace; color:#7D8794; margin:14px 0 0;
+  padding-left:12px; border-left:2px solid #B98CFF; max-width:76ch }
+details.drop .drop-body ul,details.drop .drop-body ol{ margin:14px 0 0; padding-left:17px }
+details.drop .drop-body li{ font-size:13.4px; line-height:1.6; color:#7D8794; margin-bottom:9px; max-width:80ch }
+details.drop a{ color:#B98CFF; text-decoration:none; border-bottom:1px solid #1F2630 }
+details.drop a:hover,details.drop a:focus-visible{ border-bottom-color:#B98CFF }
+details.drop em{ font-style:normal; color:#7D8794 }
 </style>
 </head>
 <body>
@@ -632,7 +653,9 @@ details p{ font-size:13.4px; color:var(--dim); margin:8px 0 0; max-width:70ch }
   </section>
 
   <section class="sources">
-    <h2>Sources</h2>
+    <details class="drop">
+    <summary>Sources</summary>
+    <div class="drop-body">
     <ul>
       <li><strong>The anchor.</strong> Peters M, Neumann M, Iyyer M, Gardner M, Clark C, Lee K, Zettlemoyer L. 2018. Deep contextualized word representations. Proceedings of NAACL-HLT 2018, 2227 to 2237. <a href="https://arxiv.org/abs/1802.05365">arXiv:1802.05365</a>, <a href="https://doi.org/10.18653/v1/N18-1202">doi:10.18653/v1/N18-1202</a> <em>- every Reported and Analysis figure on this page comes from here: Table 1 for the six tasks, Table 2 for the layer-mixing ablation, Table 3 for the injection-point ablation, Table 4 for the nearest-neighbour example, and the analysis section for the POS, WSD, perplexity and sample-efficiency numbers.</em></li>
       <li>Peters M, Ammar W, Bhagavatula C, Power R. 2017. Semi-supervised sequence tagging with bidirectional language models. <a href="https://arxiv.org/abs/1705.00108">arXiv:1705.00108</a> <em>- TagLM, the top-layer-only predecessor the paper improves on.</em></li>
@@ -642,7 +665,9 @@ details p{ font-size:13.4px; color:var(--dim); margin:8px 0 0; max-width:70ch }
       <li>Devlin J, Chang M, Lee K, Toutanova K. 2018. BERT: pre-training of deep bidirectional transformers for language understanding. <a href="https://arxiv.org/abs/1810.04805">arXiv:1810.04805</a> <em>- names the shallow-bidirectionality limitation described in tab 2.</em></li>
       <li>Gururangan S, et al. 2020. Don't stop pretraining: adapt language models to domains and tasks. <a href="https://arxiv.org/abs/2004.10964">arXiv:2004.10964</a> <em>- the modern form of the paper's domain fine-tuning result, cited in tab 5.</em></li>
       <li>Baevski A, Zhou H, Mohamed A, Auli M. 2020. wav2vec 2.0. <a href="https://arxiv.org/abs/2006.11477">arXiv:2006.11477</a> <em>- one example of the weighted layer sum outliving the architecture it was invented for.</em></li>
-    </ul>
+    
+    </div>
+    </details>
     <p class="scopenote">Scope: this is a close reading of one paper. Figures marked Reported are test-set results from its Table 1. Figures marked Analysis come from its ablations and probing experiments, which use development sets, single tasks and in most cases a single run, and are weaker evidence than the headline table. Anything marked Added here was written for this page: the verb example in tab 1, three of the four slider presets in tab 3, and the present-day half of every item in tab 5. The mixer computes a softmax over three numbers you choose and nothing else; no language model runs in this page, and no figure on it is a measurement made here. Benchmark numbers are comparisons against 2017-era baselines and say nothing about current systems.</p>
   </section>
 
